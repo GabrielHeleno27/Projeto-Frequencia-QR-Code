@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="24dp">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content">
+
+        <Spinner android:id="@+id/spinnerDisciplinas" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <EditText
+            android:id="@+id/edtData"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Data da aula"
+            android:focusable="false" />
+
+        <TextView android:text="Turnos:" android:layout_marginTop="12dp" />
+
+        <CheckBox android:id="@+id/turnoA" android:text="A" />
+        <CheckBox android:id="@+id/turnoB" android:text="B" />
+        <CheckBox android:id="@+id/turnoC" android:text="C" />
+        <CheckBox android:id="@+id/turnoD" android:text="D" />
+        <CheckBox android:id="@+id/turnoE" android:text="E" />
+
+        <Button
+            android:id="@+id/btnGerarQR"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Gerar QR Code"
+            android:layout_marginTop="16dp" />
+
+        <ImageView
+            android:id="@+id/imgQRCode"
+            android:layout_width="300dp"
+            android:layout_height="300dp"
+            android:layout_gravity="center"
+            android:layout_marginTop="16dp" />
+    </LinearLayout>
+</ScrollView>

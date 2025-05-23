@@ -13,7 +13,7 @@
         android:theme="@style/Theme.FrequenciaQR"
         tools:targetApi="31">
         <activity
-            android:name=".MainActivity"
+            android:name=".activities.LoginActivity"
             android:exported="true"
             android:theme="@style/Theme.FrequenciaQR">
             <intent-filter>
