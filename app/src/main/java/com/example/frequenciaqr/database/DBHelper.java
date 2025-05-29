@@ -1,88 +1,155 @@
 package com.example.frequenciaqr.database;
 
+import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
 public class DBHelper extends SQLiteOpenHelper {
+    private static final String DATABASE_NAME = "FrequenciaQR.db";
+    private static final int DATABASE_VERSION = 2; // Incrementando a versão para forçar a recriação
 
-    private static final String DB_NAME = "frequenciaqr.db";
-    private static final int DB_VERSION = 1;
+    // Tabelas
+    private static final String TABLE_USUARIOS = "usuarios";
+    private static final String TABLE_DISCIPLINAS = "disciplinas";
+    private static final String TABLE_ALUNOS_DISCIPLINAS = "alunos_disciplinas";
+    private static final String TABLE_PRESENCAS = "presencas";
+
+    // Colunas comuns
+    private static final String COLUMN_ID = "id";
+    private static final String COLUMN_EMAIL = "email";
+    private static final String COLUMN_SENHA = "senha";
+    private static final String COLUMN_TIPO = "tipo";
+
+    // Colunas específicas
+    private static final String COLUMN_NOME_DISCIPLINA = "nome";
+    private static final String COLUMN_SEMESTRE = "semestre";
+    private static final String COLUMN_PROFESSOR_ID = "professor_id";
+    private static final String COLUMN_ALUNO_ID = "aluno_id";
+    private static final String COLUMN_DISCIPLINA_ID = "disciplina_id";
+    private static final String COLUMN_DATA = "data";
 
     public DBHelper(Context context) {
-        super(context, DB_NAME, null, DB_VERSION);
+        super(context, DATABASE_NAME, null, DATABASE_VERSION);
     }
 
     @Override
     public void onCreate(SQLiteDatabase db) {
-        // 1. Tabela de usuários
-        db.execSQL("CREATE TABLE IF NOT EXISTS usuarios (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "nome TEXT NOT NULL," +
-                "email TEXT NOT NULL UNIQUE," +
-                "senha TEXT NOT NULL," +
-                "tipo TEXT NOT NULL" + // coordenador, professor, aluno
-                ");");
+        // Criar tabela de usuários
+        String CREATE_USUARIOS_TABLE = "CREATE TABLE " + TABLE_USUARIOS + "("
+                + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_EMAIL + " TEXT UNIQUE,"
+                + COLUMN_SENHA + " TEXT,"
+                + COLUMN_TIPO + " TEXT)";
 
-        // 2. Tabela de disciplinas
-        db.execSQL("CREATE TABLE IF NOT EXISTS disciplinas (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "nome TEXT NOT NULL" +
-                ");");
+        // Criar tabela de disciplinas
+        String CREATE_DISCIPLINAS_TABLE = "CREATE TABLE " + TABLE_DISCIPLINAS + "("
+                + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_NOME_DISCIPLINA + " TEXT,"
+                + COLUMN_SEMESTRE + " TEXT,"
+                + COLUMN_PROFESSOR_ID + " INTEGER,"
+                + "FOREIGN KEY(" + COLUMN_PROFESSOR_ID + ") REFERENCES " + TABLE_USUARIOS + "(" + COLUMN_ID + "))";
 
-        // 3. Relacionamento disciplinas-professores
-        db.execSQL("CREATE TABLE IF NOT EXISTS disciplinas_professores (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "id_disciplina INTEGER NOT NULL," +
-                "id_professor INTEGER NOT NULL," +
-                "FOREIGN KEY(id_disciplina) REFERENCES disciplinas(id)," +
-                "FOREIGN KEY(id_professor) REFERENCES usuarios(id)" +
-                ");");
+        // Criar tabela de relação alunos-disciplinas
+        String CREATE_ALUNOS_DISCIPLINAS_TABLE = "CREATE TABLE " + TABLE_ALUNOS_DISCIPLINAS + "("
+                + COLUMN_ALUNO_ID + " INTEGER,"
+                + COLUMN_DISCIPLINA_ID + " INTEGER,"
+                + "PRIMARY KEY(" + COLUMN_ALUNO_ID + "," + COLUMN_DISCIPLINA_ID + "),"
+                + "FOREIGN KEY(" + COLUMN_ALUNO_ID + ") REFERENCES " + TABLE_USUARIOS + "(" + COLUMN_ID + "),"
+                + "FOREIGN KEY(" + COLUMN_DISCIPLINA_ID + ") REFERENCES " + TABLE_DISCIPLINAS + "(" + COLUMN_ID + "))";
 
-        // 4. Relacionamento disciplinas-alunos
-        db.execSQL("CREATE TABLE IF NOT EXISTS disciplinas_alunos (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "id_disciplina INTEGER NOT NULL," +
-                "id_aluno INTEGER NOT NULL," +
-                "FOREIGN KEY(id_disciplina) REFERENCES disciplinas(id)," +
-                "FOREIGN KEY(id_aluno) REFERENCES usuarios(id)" +
-                ");");
+        // Criar tabela de presenças
+        String CREATE_PRESENCAS_TABLE = "CREATE TABLE " + TABLE_PRESENCAS + "("
+                + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
+                + COLUMN_ALUNO_ID + " INTEGER,"
+                + COLUMN_DISCIPLINA_ID + " INTEGER,"
+                + COLUMN_DATA + " DATETIME,"
+                + "FOREIGN KEY(" + COLUMN_ALUNO_ID + ") REFERENCES " + TABLE_USUARIOS + "(" + COLUMN_ID + "),"
+                + "FOREIGN KEY(" + COLUMN_DISCIPLINA_ID + ") REFERENCES " + TABLE_DISCIPLINAS + "(" + COLUMN_ID + "))";
 
-        // 5. Tabela de chamadas
-        db.execSQL("CREATE TABLE IF NOT EXISTS chamadas (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "id_disciplina INTEGER NOT NULL," +
-                "data TEXT NOT NULL," +
-                "turno TEXT NOT NULL," + // A, B, C, D, E
-                "codigo_qr TEXT NOT NULL," +
-                "timestamp_gerado INTEGER NOT NULL," +
-                "FOREIGN KEY(id_disciplina) REFERENCES disciplinas(id)" +
-                ");");
+        db.execSQL(CREATE_USUARIOS_TABLE);
+        db.execSQL(CREATE_DISCIPLINAS_TABLE);
+        db.execSQL(CREATE_ALUNOS_DISCIPLINAS_TABLE);
+        db.execSQL(CREATE_PRESENCAS_TABLE);
 
-        // 6. Tabela de presenças
-        db.execSQL("CREATE TABLE IF NOT EXISTS presencas (" +
-                "id INTEGER PRIMARY KEY AUTOINCREMENT," +
-                "id_chamada INTEGER NOT NULL," +
-                "id_aluno INTEGER NOT NULL," +
-                "data_registro TEXT NOT NULL," +
-                "FOREIGN KEY(id_chamada) REFERENCES chamadas(id)," +
-                "FOREIGN KEY(id_aluno) REFERENCES usuarios(id)" +
-                ");");
+        // Inserir usuários de teste
+        ContentValues values = new ContentValues();
 
-        // Exemplo: inserir coordenador padrão
-        db.execSQL("INSERT INTO usuarios (nome, email, senha, tipo) VALUES " +
-                "('Coordenador', 'coordenador@teste.com', '123456', 'coordenador');");
+        // Inserir coordenador
+        values.put(COLUMN_EMAIL, "coordenador@email.com");
+        values.put(COLUMN_SENHA, "123456");
+        values.put(COLUMN_TIPO, "coordenador");
+        db.insert(TABLE_USUARIOS, null, values);
+
+        // Inserir professor
+        values.clear();
+        values.put(COLUMN_EMAIL, "professor@email.com");
+        values.put(COLUMN_SENHA, "123456");
+        values.put(COLUMN_TIPO, "professor");
+        db.insert(TABLE_USUARIOS, null, values);
+
+        // Inserir alunos
+        values.clear();
+        values.put(COLUMN_EMAIL, "aluno@email.com");
+        values.put(COLUMN_SENHA, "123456");
+        values.put(COLUMN_TIPO, "aluno");
+        db.insert(TABLE_USUARIOS, null, values);
+
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        // Recriar todas as tabelas se houver upgrade de versão
-        db.execSQL("DROP TABLE IF EXISTS presencas;");
-        db.execSQL("DROP TABLE IF EXISTS chamadas;");
-        db.execSQL("DROP TABLE IF EXISTS disciplinas_alunos;");
-        db.execSQL("DROP TABLE IF EXISTS disciplinas_professores;");
-        db.execSQL("DROP TABLE IF EXISTS disciplinas;");
-        db.execSQL("DROP TABLE IF EXISTS usuarios;");
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_PRESENCAS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_ALUNOS_DISCIPLINAS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_DISCIPLINAS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USUARIOS);
         onCreate(db);
     }
-}
+
+    public String verificarCredenciais(String email, String senha) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String[] columns = {COLUMN_TIPO};
+        String selection = COLUMN_EMAIL + " = ? AND " + COLUMN_SENHA + " = ?";
+        String[] selectionArgs = {email, senha};
+
+        Cursor cursor = db.query(TABLE_USUARIOS, columns, selection, selectionArgs, null, null, null);
+
+        String tipoUsuario = null;
+        if (cursor.moveToFirst()) {
+            tipoUsuario = cursor.getString(cursor.getColumnIndex(COLUMN_TIPO));
+        }
+
+        cursor.close();
+        return tipoUsuario;
+    }
+
+    // Métodos para gerenciar disciplinas
+    public long criarDisciplina(String nome, String semestre, int professorId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_NOME_DISCIPLINA, nome);
+        values.put(COLUMN_SEMESTRE, semestre);
+        values.put(COLUMN_PROFESSOR_ID, professorId);
+        return db.insert(TABLE_DISCIPLINAS, null, values);
+    }
+
+    // Método para adicionar aluno à disciplina
+    public void adicionarAlunoNaDisciplina(int alunoId, int disciplinaId) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ALUNO_ID, alunoId);
+        values.put(COLUMN_DISCIPLINA_ID, disciplinaId);
+        db.insert(TABLE_ALUNOS_DISCIPLINAS, null, values);
+    }
+
+    // Método para registrar presença
+    public void registrarPresenca(int alunoId, int disciplinaId, String data) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ALUNO_ID, alunoId);
+        values.put(COLUMN_DISCIPLINA_ID, disciplinaId);
+        values.put(COLUMN_DATA, data);
+        db.insert(TABLE_PRESENCAS, null, values);
+    }
+} 

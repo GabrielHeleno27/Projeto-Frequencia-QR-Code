@@ -1,5 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">FrequenciaQR</string>
+    <string name="app_name">Frequência QR</string>
     <string name="action_settings">Settings</string>
     <!-- Strings used for fragments for navigation -->
     <string name="first_fragment_label">First Fragment</string>
@@ -43,4 +44,41 @@
         libero vel nunc consequat, quis tincidunt nisl eleifend. Cras bibendum enim a justo luctus
         vestibulum. Fusce dictum libero quis erat maximus, vitae volutpat diam dignissim.
     </string>
+
+    <!-- Login -->
+    <string name="hint_email">E-mail</string>
+    <string name="hint_senha">Senha</string>
+    <string name="btn_entrar">Entrar</string>
+    
+    <!-- Coordenador -->
+    <string name="titulo_criar_disciplina">Criar Nova Disciplina</string>
+    <string name="hint_nome_disciplina">Nome da Disciplina</string>
+    <string name="label_semestre">Semestre</string>
+    <string name="hint_email_professor">E-mail do Professor</string>
+    <string name="btn_criar_disciplina">Criar Disciplina</string>
+    <string name="titulo_adicionar_aluno">Adicionar Aluno à Disciplina</string>
+    <string name="hint_email_aluno">E-mail do Aluno</string>
+    <string name="btn_adicionar_aluno">Adicionar Aluno</string>
+    
+    <!-- Professor -->
+    <string name="titulo_minhas_disciplinas">Minhas Disciplinas</string>
+    <string name="btn_gerar_qr">Gerar QR Code</string>
+    <string name="titulo_qr_code">QR Code da Aula</string>
+    <string name="msg_mostrar_qr">Mostre este QR Code para os alunos registrarem presença</string>
+    <string name="label_tempo_restante">Tempo restante: %1$02d:%2$02d</string>
+    
+    <!-- Aluno -->
+    <string name="btn_ler_qr">Ler QR Code</string>
+    <string name="msg_posicionar_qr">Posicione o QR Code no centro da tela</string>
+    <string name="msg_presenca_registrada">Presença registrada com sucesso</string>
+    
+    <!-- Mensagens de erro -->
+    <string name="erro_campos_vazios">Preencha todos os campos</string>
+    <string name="erro_credenciais">Credenciais inválidas</string>
+    <string name="erro_gerar_qr">Erro ao gerar QR Code</string>
+
+    <string name="navigation_drawer_open">Abrir menu de navegação</string>
+    <string name="navigation_drawer_close">Fechar menu de navegação</string>
+
+    <string name="gerar_qr_code">Gerar QR Code</string>
 </resources>
