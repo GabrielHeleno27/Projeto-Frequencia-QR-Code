@@ -14,6 +14,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.frequenciaqr.ui.fragments.QRCodeDialogFragment;
 import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.database.DBHelper;
+import com.example.frequenciaqr.websocket.PresencaServer;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
@@ -21,21 +22,24 @@ import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
 import java.util.UUID;
+import android.util.Log;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import com.example.frequenciaqr.model.Disciplina;
-import com.example.frequenciaqr.ui.adapter.DisciplinaAdapter;
-import com.example.frequenciaqr.ui.base.BaseActivity;
-
-import java.util.ArrayList;
-
-public class ProfessorActivity extends BaseActivity implements DisciplinaAdapter.OnDisciplinaClickListener {
-    private RecyclerView recyclerDisciplinas;
+public class ProfessorActivity extends AppCompatActivity implements PresencaServer.PresencaListener {
+    private static final String TAG = "ProfessorActivity";
+    private RecyclerView recyclerViewDisciplinas;
     private FloatingActionButton fabGerarQR;
     private TextView txtTempoRestante;
     private DBHelper dbHelper;
     private CountDownTimer qrCodeTimer;
     private static final long QR_CODE_DURATION = 5 * 60 * 1000; // 5 minutos em milissegundos
-    private DisciplinaAdapter adapter;
+    private static final int WEBSOCKET_PORT = 8887;
+    private PresencaServer presencaServer;
+    private String currentCodigoAula;
+    private ExecutorService executorService;
+    private Future<?> serverFuture;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,14 +47,16 @@ public class ProfessorActivity extends BaseActivity implements DisciplinaAdapter
         setContentView(R.layout.activity_professor);
 
         dbHelper = new DBHelper(this);
+        executorService = Executors.newSingleThreadExecutor();
 
         // Inicializar views
-        recyclerDisciplinas = findViewById(R.id.recyclerDisciplinas);
+        recyclerViewDisciplinas = findViewById(R.id.recyclerDisciplinas);
         fabGerarQR = findViewById(R.id.fabGerarQR);
         txtTempoRestante = findViewById(R.id.txtTempoRestante);
 
         // Configurar RecyclerView
-        setupRecyclerView();
+        recyclerViewDisciplinas.setLayoutManager(new LinearLayoutManager(this));
+        // TODO: Implementar adapter para disciplinas
 
         // Configurar FAB
         fabGerarQR.setOnClickListener(v -> gerarQRCode());
@@ -59,31 +65,75 @@ public class ProfessorActivity extends BaseActivity implements DisciplinaAdapter
         carregarDisciplinas();
     }
 
-    @Override
-    protected int getLayoutResourceId() {
-        return R.layout.activity_professor;
-    }
-
-    private void setupRecyclerView() {
-        recyclerDisciplinas.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new DisciplinaAdapter(new ArrayList<>(), this);
-        recyclerDisciplinas.setAdapter(adapter);
-    }
-
     private void carregarDisciplinas() {
         SharedPreferences sharedPreferences = getSharedPreferences("FrequenciaQR", MODE_PRIVATE);
         String emailProfessor = sharedPreferences.getString("user_email", "");
-
         // TODO: Implementar carregamento das disciplinas do banco de dados
+    }
+
+    private void pararServidor() {
+        if (serverFuture != null) {
+            serverFuture.cancel(true);
+        }
+        
+        if (presencaServer != null) {
+            executorService.execute(() -> {
+                try {
+                    presencaServer.stop();
+                } catch (InterruptedException e) {
+                    Log.e(TAG, "Erro ao parar servidor WebSocket", e);
+                    runOnUiThread(() -> {
+                        Toast.makeText(ProfessorActivity.this, 
+                            "Erro ao parar servidor: " + e.getMessage(), 
+                            Toast.LENGTH_SHORT).show();
+                    });
+                } finally {
+                    presencaServer = null;
+                }
+            });
+        }
+    }
+
+    private void iniciarServidor() {
+        if (presencaServer != null) {
+            pararServidor();
+        }
+
+        presencaServer = new PresencaServer(WEBSOCKET_PORT, currentCodigoAula, this);
+        serverFuture = executorService.submit(() -> {
+            try {
+                presencaServer.start();
+            } catch (Exception e) {
+                Log.e(TAG, "Erro ao iniciar servidor WebSocket", e);
+                runOnUiThread(() -> {
+                    Toast.makeText(ProfessorActivity.this, 
+                        "Erro ao iniciar servidor. Verifique sua conexão.", 
+                        Toast.LENGTH_LONG).show();
+                });
+            }
+        });
     }
 
     private void gerarQRCode() {
         // Gerar código único para a aula
-        String codigoAula = UUID.randomUUID().toString();
+        currentCodigoAula = UUID.randomUUID().toString();
+        
+        // Iniciar servidor WebSocket
+        iniciarServidor();
+        
+        // Obter IP local
+        String ipAddress = PresencaServer.getLocalIpAddress();
+        if (ipAddress == null) {
+            Toast.makeText(this, "Erro ao obter endereço IP", Toast.LENGTH_LONG).show();
+            return;
+        }
+        
+        // Criar string com dados para o QR Code (código|ip|porta)
+        String qrData = String.format("%s|%s|%d", currentCodigoAula, ipAddress, WEBSOCKET_PORT);
         
         try {
             QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix bitMatrix = writer.encode(codigoAula, BarcodeFormat.QR_CODE, 512, 512);
+            BitMatrix bitMatrix = writer.encode(qrData, BarcodeFormat.QR_CODE, 512, 512);
             BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
             Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
 
@@ -93,8 +143,6 @@ public class ProfessorActivity extends BaseActivity implements DisciplinaAdapter
 
             // Iniciar timer
             iniciarTimer();
-
-            // TODO: Salvar código no banco de dados para validação posterior
             
         } catch (WriterException e) {
             Toast.makeText(this, "Erro ao gerar QR Code", Toast.LENGTH_SHORT).show();
@@ -119,9 +167,17 @@ public class ProfessorActivity extends BaseActivity implements DisciplinaAdapter
             @Override
             public void onFinish() {
                 txtTempoRestante.setVisibility(View.GONE);
-                // TODO: Invalidar QR Code no banco de dados
+                pararServidor();
             }
         }.start();
+    }
+
+    @Override
+    public void onPresencaRegistrada(String alunoEmail) {
+        runOnUiThread(() -> {
+            Toast.makeText(this, "Presença registrada: " + alunoEmail, Toast.LENGTH_SHORT).show();
+            // TODO: Atualizar lista de presenças na interface
+        });
     }
 
     @Override
@@ -130,10 +186,7 @@ public class ProfessorActivity extends BaseActivity implements DisciplinaAdapter
         if (qrCodeTimer != null) {
             qrCodeTimer.cancel();
         }
-    }
-
-    @Override
-    public void onDisciplinaClick(Disciplina disciplina) {
-        // TODO: Implementar geração do QR Code
+        pararServidor();
+        executorService.shutdown();
     }
 } 

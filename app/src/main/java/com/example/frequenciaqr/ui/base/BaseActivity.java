@@ -7,6 +7,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.ActionBarDrawerToggle;
 import androidx.appcompat.app.AppCompatActivity;
@@ -29,15 +30,19 @@ public abstract class BaseActivity extends AppCompatActivity implements Navigati
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(getLayoutResourceId());
-
         sharedPreferences = getSharedPreferences("FrequenciaQR", MODE_PRIVATE);
-        
-        setupToolbar();
-        setupDrawer();
-        setupNavigationHeader();
     }
 
     protected abstract int getLayoutResourceId();
+
+    @Override
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        setupToolbar();
+        setupDrawer();
+        setupNavigationHeader();
+        setupBackPressedCallback();
+    }
 
     private void setupToolbar() {
         toolbar = findViewById(R.id.toolbar);
@@ -71,6 +76,20 @@ public abstract class BaseActivity extends AppCompatActivity implements Navigati
         tipoTextView.setText(tipo.substring(0, 1).toUpperCase() + tipo.substring(1));
     }
 
+    private void setupBackPressedCallback() {
+        getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+            @Override
+            public void handleOnBackPressed() {
+                if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
+                    drawerLayout.closeDrawer(GravityCompat.START);
+                } else {
+                    setEnabled(false);
+                    getOnBackPressedDispatcher().onBackPressed();
+                }
+            }
+        });
+    }
+
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.nav_logout) {
@@ -91,14 +110,5 @@ public abstract class BaseActivity extends AppCompatActivity implements Navigati
         intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
         startActivity(intent);
         finish();
-    }
-
-    @Override
-    public void onBackPressed() {
-        if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
-            drawerLayout.closeDrawer(GravityCompat.START);
-        } else {
-            super.onBackPressed();
-        }
     }
 } 

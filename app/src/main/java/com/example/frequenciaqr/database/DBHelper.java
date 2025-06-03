@@ -5,30 +5,36 @@ import android.content.Context;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
+import android.util.Log;
+
+import com.example.frequenciaqr.model.Disciplina;
+import com.example.frequenciaqr.model.Usuario;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class DBHelper extends SQLiteOpenHelper {
     private static final String DATABASE_NAME = "FrequenciaQR.db";
-    private static final int DATABASE_VERSION = 2; // Incrementando a versão para forçar a recriação
+    private static final int DATABASE_VERSION = 4;
 
     // Tabelas
     private static final String TABLE_USUARIOS = "usuarios";
     private static final String TABLE_DISCIPLINAS = "disciplinas";
     private static final String TABLE_ALUNOS_DISCIPLINAS = "alunos_disciplinas";
-    private static final String TABLE_PRESENCAS = "presencas";
 
     // Colunas comuns
     private static final String COLUMN_ID = "id";
     private static final String COLUMN_EMAIL = "email";
     private static final String COLUMN_SENHA = "senha";
     private static final String COLUMN_TIPO = "tipo";
+    private static final String COLUMN_NOME = "nome";
 
     // Colunas específicas
     private static final String COLUMN_NOME_DISCIPLINA = "nome";
     private static final String COLUMN_SEMESTRE = "semestre";
-    private static final String COLUMN_PROFESSOR_ID = "professor_id";
-    private static final String COLUMN_ALUNO_ID = "aluno_id";
-    private static final String COLUMN_DISCIPLINA_ID = "disciplina_id";
-    private static final String COLUMN_DATA = "data";
+    private static final String COLUMN_EMAIL_PROFESSOR = "email_professor";
+    private static final String COLUMN_ID_DISCIPLINA = "id_disciplina";
+    private static final String COLUMN_EMAIL_ALUNO = "email_aluno";
 
     public DBHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -41,115 +47,253 @@ public class DBHelper extends SQLiteOpenHelper {
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + COLUMN_EMAIL + " TEXT UNIQUE,"
                 + COLUMN_SENHA + " TEXT,"
-                + COLUMN_TIPO + " TEXT)";
+                + COLUMN_TIPO + " TEXT,"
+                + COLUMN_NOME + " TEXT"
+                + ")";
 
         // Criar tabela de disciplinas
         String CREATE_DISCIPLINAS_TABLE = "CREATE TABLE " + TABLE_DISCIPLINAS + "("
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + COLUMN_NOME_DISCIPLINA + " TEXT,"
                 + COLUMN_SEMESTRE + " TEXT,"
-                + COLUMN_PROFESSOR_ID + " INTEGER,"
-                + "FOREIGN KEY(" + COLUMN_PROFESSOR_ID + ") REFERENCES " + TABLE_USUARIOS + "(" + COLUMN_ID + "))";
+                + COLUMN_EMAIL_PROFESSOR + " TEXT,"
+                + "FOREIGN KEY(" + COLUMN_EMAIL_PROFESSOR + ") REFERENCES " 
+                + TABLE_USUARIOS + "(" + COLUMN_EMAIL + ")"
+                + ")";
 
         // Criar tabela de relação alunos-disciplinas
         String CREATE_ALUNOS_DISCIPLINAS_TABLE = "CREATE TABLE " + TABLE_ALUNOS_DISCIPLINAS + "("
-                + COLUMN_ALUNO_ID + " INTEGER,"
-                + COLUMN_DISCIPLINA_ID + " INTEGER,"
-                + "PRIMARY KEY(" + COLUMN_ALUNO_ID + "," + COLUMN_DISCIPLINA_ID + "),"
-                + "FOREIGN KEY(" + COLUMN_ALUNO_ID + ") REFERENCES " + TABLE_USUARIOS + "(" + COLUMN_ID + "),"
-                + "FOREIGN KEY(" + COLUMN_DISCIPLINA_ID + ") REFERENCES " + TABLE_DISCIPLINAS + "(" + COLUMN_ID + "))";
-
-        // Criar tabela de presenças
-        String CREATE_PRESENCAS_TABLE = "CREATE TABLE " + TABLE_PRESENCAS + "("
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + COLUMN_ALUNO_ID + " INTEGER,"
-                + COLUMN_DISCIPLINA_ID + " INTEGER,"
-                + COLUMN_DATA + " DATETIME,"
-                + "FOREIGN KEY(" + COLUMN_ALUNO_ID + ") REFERENCES " + TABLE_USUARIOS + "(" + COLUMN_ID + "),"
-                + "FOREIGN KEY(" + COLUMN_DISCIPLINA_ID + ") REFERENCES " + TABLE_DISCIPLINAS + "(" + COLUMN_ID + "))";
+                + COLUMN_ID_DISCIPLINA + " INTEGER,"
+                + COLUMN_EMAIL_ALUNO + " TEXT,"
+                + "FOREIGN KEY(" + COLUMN_ID_DISCIPLINA + ") REFERENCES " 
+                + TABLE_DISCIPLINAS + "(" + COLUMN_ID + "),"
+                + "FOREIGN KEY(" + COLUMN_EMAIL_ALUNO + ") REFERENCES " 
+                + TABLE_USUARIOS + "(" + COLUMN_EMAIL + ")"
+                + ")";
 
         db.execSQL(CREATE_USUARIOS_TABLE);
         db.execSQL(CREATE_DISCIPLINAS_TABLE);
         db.execSQL(CREATE_ALUNOS_DISCIPLINAS_TABLE);
-        db.execSQL(CREATE_PRESENCAS_TABLE);
 
-        // Inserir usuários de teste
+        // Inserir usuário coordenador padrão
         ContentValues values = new ContentValues();
-
-        // Inserir coordenador
         values.put(COLUMN_EMAIL, "coordenador@email.com");
         values.put(COLUMN_SENHA, "123456");
         values.put(COLUMN_TIPO, "coordenador");
-        db.insert(TABLE_USUARIOS, null, values);
+        values.put(COLUMN_NOME, "Coordenador");
+        long id = db.insert(TABLE_USUARIOS, null, values);
+        Log.d("DBHelper", "Coordenador criado com ID: " + id);
 
-        // Inserir professor
-        values.clear();
+        // Inserir usuário professor padrão
+        values = new ContentValues();
         values.put(COLUMN_EMAIL, "professor@email.com");
         values.put(COLUMN_SENHA, "123456");
         values.put(COLUMN_TIPO, "professor");
-        db.insert(TABLE_USUARIOS, null, values);
+        values.put(COLUMN_NOME, "Professor");
+        id = db.insert(TABLE_USUARIOS, null, values);
+        Log.d("DBHelper", "Professor criado com ID: " + id);
 
-        // Inserir alunos
-        values.clear();
+        // Inserir usuário aluno padrão
+        values = new ContentValues();
         values.put(COLUMN_EMAIL, "aluno@email.com");
         values.put(COLUMN_SENHA, "123456");
         values.put(COLUMN_TIPO, "aluno");
-        db.insert(TABLE_USUARIOS, null, values);
-
+        values.put(COLUMN_NOME, "Aluno");
+        id = db.insert(TABLE_USUARIOS, null, values);
+        Log.d("DBHelper", "Aluno criado com ID: " + id);
     }
 
     @Override
     public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
-        db.execSQL("DROP TABLE IF EXISTS " + TABLE_PRESENCAS);
+        // Dropar todas as tabelas existentes
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_ALUNOS_DISCIPLINAS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_DISCIPLINAS);
+        db.execSQL("DROP TABLE IF EXISTS " + TABLE_USUARIOS);
+        
+        // Recriar todas as tabelas
+        onCreate(db);
+    }
+
+    @Override
+    public void onDowngrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+        // Em caso de downgrade, vamos recriar o banco de dados
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_ALUNOS_DISCIPLINAS);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_DISCIPLINAS);
         db.execSQL("DROP TABLE IF EXISTS " + TABLE_USUARIOS);
         onCreate(db);
     }
 
-    public String verificarCredenciais(String email, String senha) {
+    public boolean verificarUsuarioExiste(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
-        String[] columns = {COLUMN_TIPO};
-        String selection = COLUMN_EMAIL + " = ? AND " + COLUMN_SENHA + " = ?";
-        String[] selectionArgs = {email, senha};
+        Cursor cursor = db.query(TABLE_USUARIOS,
+                new String[]{COLUMN_EMAIL},
+                COLUMN_EMAIL + "=?",
+                new String[]{email},
+                null, null, null);
 
-        Cursor cursor = db.query(TABLE_USUARIOS, columns, selection, selectionArgs, null, null, null);
-
-        String tipoUsuario = null;
-        if (cursor.moveToFirst()) {
-            tipoUsuario = cursor.getString(cursor.getColumnIndex(COLUMN_TIPO));
-        }
-
+        boolean existe = cursor.getCount() > 0;
         cursor.close();
-        return tipoUsuario;
+        return existe;
     }
 
-    // Métodos para gerenciar disciplinas
-    public long criarDisciplina(String nome, String semestre, int professorId) {
+    public String getTipoUsuario(String email) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_USUARIOS,
+                new String[]{COLUMN_TIPO},
+                COLUMN_EMAIL + "=?",
+                new String[]{email},
+                null, null, null);
+
+        String tipo = null;
+        if (cursor.moveToFirst()) {
+            tipo = cursor.getString(cursor.getColumnIndex(COLUMN_TIPO));
+        }
+        cursor.close();
+        return tipo;
+    }
+
+    public long criarDisciplina(String nome, String semestre, String emailProfessor) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
         values.put(COLUMN_NOME_DISCIPLINA, nome);
         values.put(COLUMN_SEMESTRE, semestre);
-        values.put(COLUMN_PROFESSOR_ID, professorId);
-        return db.insert(TABLE_DISCIPLINAS, null, values);
+        values.put(COLUMN_EMAIL_PROFESSOR, emailProfessor);
+
+        long id = -1;
+        try {
+            id = db.insertOrThrow(TABLE_DISCIPLINAS, null, values);
+        } catch (Exception e) {
+            Log.e("DBHelper", "Erro ao criar disciplina: " + e.getMessage());
+        }
+        return id;
     }
 
-    // Método para adicionar aluno à disciplina
-    public void adicionarAlunoNaDisciplina(int alunoId, int disciplinaId) {
+    public boolean adicionarAlunoADisciplina(int idDisciplina, String emailAluno) {
         SQLiteDatabase db = this.getWritableDatabase();
         ContentValues values = new ContentValues();
-        values.put(COLUMN_ALUNO_ID, alunoId);
-        values.put(COLUMN_DISCIPLINA_ID, disciplinaId);
-        db.insert(TABLE_ALUNOS_DISCIPLINAS, null, values);
+        values.put(COLUMN_ID_DISCIPLINA, idDisciplina);
+        values.put(COLUMN_EMAIL_ALUNO, emailAluno);
+
+        long id = -1;
+        try {
+            id = db.insertOrThrow(TABLE_ALUNOS_DISCIPLINAS, null, values);
+        } catch (Exception e) {
+            Log.e("DBHelper", "Erro ao adicionar aluno à disciplina: " + e.getMessage());
+        }
+        return id != -1;
     }
 
-    // Método para registrar presença
-    public void registrarPresenca(int alunoId, int disciplinaId, String data) {
-        SQLiteDatabase db = this.getWritableDatabase();
-        ContentValues values = new ContentValues();
-        values.put(COLUMN_ALUNO_ID, alunoId);
-        values.put(COLUMN_DISCIPLINA_ID, disciplinaId);
-        values.put(COLUMN_DATA, data);
-        db.insert(TABLE_PRESENCAS, null, values);
+    public List<Disciplina> getAllDisciplinas() {
+        List<Disciplina> disciplinas = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String[] columns = {
+            COLUMN_ID,
+            COLUMN_NOME_DISCIPLINA,
+            COLUMN_SEMESTRE,
+            COLUMN_EMAIL_PROFESSOR
+        };
+
+        Cursor cursor = db.query(TABLE_DISCIPLINAS, columns, null, null, null, null, 
+            COLUMN_SEMESTRE + " DESC, " + COLUMN_NOME_DISCIPLINA + " ASC");
+
+        if (cursor.moveToFirst()) {
+            do {
+                Disciplina disciplina = new Disciplina(
+                    cursor.getInt(cursor.getColumnIndex(COLUMN_ID)),
+                    cursor.getString(cursor.getColumnIndex(COLUMN_NOME_DISCIPLINA)),
+                    cursor.getString(cursor.getColumnIndex(COLUMN_SEMESTRE)),
+                    cursor.getString(cursor.getColumnIndex(COLUMN_EMAIL_PROFESSOR))
+                );
+                disciplinas.add(disciplina);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        return disciplinas;
+    }
+
+    public List<String> getAlunosDaDisciplina(int idDisciplina) {
+        List<String> alunos = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String query = "SELECT " + COLUMN_EMAIL_ALUNO + " FROM " + TABLE_ALUNOS_DISCIPLINAS +
+                " WHERE " + COLUMN_ID_DISCIPLINA + " = ?";
+
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(idDisciplina)});
+
+        if (cursor.moveToFirst()) {
+            do {
+                alunos.add(cursor.getString(cursor.getColumnIndex(COLUMN_EMAIL_ALUNO)));
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        return alunos;
+    }
+
+    public String verificarCredenciais(String email, String senha) {
+        Log.d("DBHelper", "Verificando credenciais para email: " + email);
+        
+        SQLiteDatabase db = this.getReadableDatabase();
+        Cursor cursor = db.query(TABLE_USUARIOS,
+                new String[]{COLUMN_TIPO},
+                COLUMN_EMAIL + "=? AND " + COLUMN_SENHA + "=?",
+                new String[]{email, senha},
+                null, null, null);
+
+        String tipo = null;
+        if (cursor.moveToFirst()) {
+            tipo = cursor.getString(cursor.getColumnIndex(COLUMN_TIPO));
+            Log.d("DBHelper", "Tipo de usuário encontrado: " + tipo);
+        } else {
+            Log.d("DBHelper", "Nenhum usuário encontrado com essas credenciais");
+        }
+        cursor.close();
+        return tipo;
+    }
+
+    public Usuario getProfessorByDisciplinaId(int disciplinaId) {
+        SQLiteDatabase db = this.getReadableDatabase();
+        String query = "SELECT u." + COLUMN_EMAIL + ", u." + COLUMN_NOME + ", u." + COLUMN_TIPO +
+                      " FROM " + TABLE_USUARIOS + " u " +
+                      "INNER JOIN " + TABLE_DISCIPLINAS + " d ON d." + COLUMN_EMAIL_PROFESSOR + " = u." + COLUMN_EMAIL +
+                      " WHERE d." + COLUMN_ID + " = ?";
+        
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(disciplinaId)});
+        
+        if (cursor.moveToFirst()) {
+            Usuario professor = new Usuario();
+            professor.setEmail(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL)));
+            professor.setNome(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME)));
+            professor.setTipo(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TIPO)));
+            cursor.close();
+            return professor;
+        }
+        
+        cursor.close();
+        return null;
+    }
+
+    public List<Usuario> getAlunosByDisciplinaId(int disciplinaId) {
+        List<Usuario> alunos = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+        
+        String query = "SELECT u." + COLUMN_EMAIL + ", u." + COLUMN_NOME + ", u." + COLUMN_TIPO +
+                      " FROM " + TABLE_USUARIOS + " u " +
+                      "INNER JOIN " + TABLE_ALUNOS_DISCIPLINAS + " ad ON ad." + COLUMN_EMAIL_ALUNO + " = u." + COLUMN_EMAIL +
+                      " WHERE ad." + COLUMN_ID_DISCIPLINA + " = ? AND u." + COLUMN_TIPO + " = 'aluno'";
+        
+        Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(disciplinaId)});
+        
+        while (cursor.moveToNext()) {
+            Usuario aluno = new Usuario();
+            aluno.setEmail(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL)));
+            aluno.setNome(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME)));
+            aluno.setTipo(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TIPO)));
+            alunos.add(aluno);
+        }
+        
+        cursor.close();
+        return alunos;
     }
 } 

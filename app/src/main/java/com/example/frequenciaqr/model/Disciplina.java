@@ -4,15 +4,13 @@ public class Disciplina {
     private int id;
     private String nome;
     private String semestre;
-    private String professor;
-    private int professorId;
+    private String emailProfessor;
 
-    public Disciplina(int id, String nome, String semestre, String professor, int professorId) {
+    public Disciplina(int id, String nome, String semestre, String emailProfessor) {
         this.id = id;
         this.nome = nome;
         this.semestre = semestre;
-        this.professor = professor;
-        this.professorId = professorId;
+        this.emailProfessor = emailProfessor;
     }
 
     public int getId() {
@@ -39,19 +37,11 @@ public class Disciplina {
         this.semestre = semestre;
     }
 
-    public String getProfessor() {
-        return professor;
+    public String getEmailProfessor() {
+        return emailProfessor;
     }
 
-    public void setProfessor(String professor) {
-        this.professor = professor;
-    }
-
-    public int getProfessorId() {
-        return professorId;
-    }
-
-    public void setProfessorId(int professorId) {
-        this.professorId = professorId;
+    public void setEmailProfessor(String emailProfessor) {
+        this.emailProfessor = emailProfessor;
     }
 } 

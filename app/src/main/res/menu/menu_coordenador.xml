@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_disciplinas"
+            android:icon="@drawable/ic_list"
+            android:title="Disciplinas"/>
+
+        <item
+            android:id="@+id/nav_gerenciar_disciplinas"
+            android:icon="@drawable/ic_add"
+            android:title="Gerenciar Disciplinas"/>
+        
+        <item
+            android:id="@+id/nav_logout"
+            android:icon="@drawable/ic_logout"
+            android:title="Sair" />
+    </group>
+</menu> 

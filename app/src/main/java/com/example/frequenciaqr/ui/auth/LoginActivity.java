@@ -3,6 +3,7 @@ package com.example.frequenciaqr.ui.auth;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -54,6 +55,8 @@ public class LoginActivity extends AppCompatActivity {
         String email = emailInput.getText().toString().trim();
         String senha = passwordInput.getText().toString().trim();
 
+        Log.d("LoginActivity", "Tentando fazer login com email: " + email);
+
         if (email.isEmpty() || senha.isEmpty()) {
             Toast.makeText(this, "Preencha todos os campos", Toast.LENGTH_SHORT).show();
             return;
@@ -61,8 +64,11 @@ public class LoginActivity extends AppCompatActivity {
 
         // Verifica as credenciais no banco de dados
         String tipoUsuario = dbHelper.verificarCredenciais(email, senha);
+        Log.d("LoginActivity", "Tipo de usuário retornado: " + tipoUsuario);
 
         if (tipoUsuario != null) {
+            Log.d("LoginActivity", "Login bem-sucedido como: " + tipoUsuario);
+            
             // Salva o tipo de usuário nas SharedPreferences
             SharedPreferences.Editor editor = sharedPreferences.edit();
             editor.putString("user_type", tipoUsuario);

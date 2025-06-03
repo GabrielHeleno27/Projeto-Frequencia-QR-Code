@@ -29,7 +29,7 @@ public class QRCodeDialogFragment extends DialogFragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            qrBitmap = getArguments().getParcelable(ARG_QR_BITMAP, Bitmap.class);
+            qrBitmap = (Bitmap) getArguments().getParcelable(ARG_QR_BITMAP);
         }
     }
 
