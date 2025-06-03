@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <group android:checkableBehavior="single">
+        <item
+            android:id="@+id/nav_disciplinas"
+            android:icon="@drawable/ic_list"
+            android:title="Disciplinas"/>
+        <item
+            android:id="@+id/nav_gerar_qr"
+            android:icon="@drawable/ic_qr_code"
+            android:title="Gerar QR Code"/>
+        <item
+            android:id="@+id/nav_sair"
+            android:icon="@drawable/ic_exit"
+            android:title="Sair"/>
+    </group>
+</menu> 

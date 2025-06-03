@@ -6,6 +6,7 @@
     android:layout_height="match_parent"
     android:fitsSystemWindows="true">
 
+    <!-- Conteúdo Principal -->
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
@@ -15,34 +16,46 @@
             android:layout_height="match_parent"
             android:orientation="vertical">
 
-            <com.google.android.material.appbar.AppBarLayout
+            <androidx.appcompat.widget.Toolbar
+                android:id="@+id/toolbar"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content">
+                android:layout_height="?attr/actionBarSize"
+                android:background="?attr/colorPrimary"
+                android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar"/>
 
-                <androidx.appcompat.widget.Toolbar
-                    android:id="@+id/toolbar"
+            <FrameLayout
+                android:layout_width="match_parent"
+                android:layout_height="match_parent">
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerViewDisciplinas"
                     android:layout_width="match_parent"
-                    android:layout_height="?attr/actionBarSize"
-                    android:background="?attr/colorPrimary"
-                    android:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
+                    android:layout_height="match_parent"
+                    android:padding="8dp"
+                    android:clipToPadding="false"/>
 
-            </com.google.android.material.appbar.AppBarLayout>
+                <TextView
+                    android:id="@+id/txtSemDisciplinas"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="Não há disciplinas cadastradas"
+                    android:textSize="18sp"
+                    android:visibility="gone"/>
 
-            <TextView
-                android:id="@+id/txtTempoRestante"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:gravity="center"
-                android:padding="8dp"
-                android:textSize="16sp"
-                android:visibility="gone" />
+                <TextView
+                    android:id="@+id/txtTempoRestante"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="bottom|center_horizontal"
+                    android:layout_marginBottom="16dp"
+                    android:background="@android:color/white"
+                    android:elevation="4dp"
+                    android:padding="8dp"
+                    android:textSize="16sp"
+                    android:visibility="gone"/>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerDisciplinas"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:padding="16dp"
-                android:clipToPadding="false" />
+            </FrameLayout>
 
         </LinearLayout>
 
@@ -52,11 +65,12 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_margin="16dp"
-            android:contentDescription="@string/gerar_qr_code"
-            app:srcCompat="@drawable/ic_qr_code" />
+            android:src="@drawable/ic_qr_code"
+            app:fabSize="normal"/>
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 
+    <!-- Menu Lateral -->
     <com.google.android.material.navigation.NavigationView
         android:id="@+id/nav_view"
         android:layout_width="wrap_content"
@@ -64,6 +78,6 @@
         android:layout_gravity="start"
         android:fitsSystemWindows="true"
         app:headerLayout="@layout/nav_header"
-        app:menu="@menu/drawer_menu" />
+        app:menu="@menu/menu_professor"/>
 
 </androidx.drawerlayout.widget.DrawerLayout>

@@ -44,19 +44,18 @@ public class DBHelper extends SQLiteOpenHelper {
     public void onCreate(SQLiteDatabase db) {
         // Criar tabela de usuários
         String CREATE_USUARIOS_TABLE = "CREATE TABLE " + TABLE_USUARIOS + "("
-                + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + COLUMN_EMAIL + " TEXT UNIQUE,"
-                + COLUMN_SENHA + " TEXT,"
-                + COLUMN_TIPO + " TEXT,"
+                + COLUMN_EMAIL + " TEXT PRIMARY KEY,"
+                + COLUMN_SENHA + " TEXT NOT NULL,"
+                + COLUMN_TIPO + " TEXT NOT NULL,"
                 + COLUMN_NOME + " TEXT"
                 + ")";
 
         // Criar tabela de disciplinas
         String CREATE_DISCIPLINAS_TABLE = "CREATE TABLE " + TABLE_DISCIPLINAS + "("
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
-                + COLUMN_NOME_DISCIPLINA + " TEXT,"
-                + COLUMN_SEMESTRE + " TEXT,"
-                + COLUMN_EMAIL_PROFESSOR + " TEXT,"
+                + COLUMN_NOME_DISCIPLINA + " TEXT NOT NULL,"
+                + COLUMN_SEMESTRE + " TEXT NOT NULL,"
+                + COLUMN_EMAIL_PROFESSOR + " TEXT NOT NULL,"
                 + "FOREIGN KEY(" + COLUMN_EMAIL_PROFESSOR + ") REFERENCES " 
                 + TABLE_USUARIOS + "(" + COLUMN_EMAIL + ")"
                 + ")";
@@ -231,25 +230,17 @@ public class DBHelper extends SQLiteOpenHelper {
         return alunos;
     }
 
-    public String verificarCredenciais(String email, String senha) {
-        Log.d("DBHelper", "Verificando credenciais para email: " + email);
-        
+    public boolean verificarCredenciais(String email, String senha) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_USUARIOS,
-                new String[]{COLUMN_TIPO},
-                COLUMN_EMAIL + "=? AND " + COLUMN_SENHA + "=?",
-                new String[]{email, senha},
-                null, null, null);
-
-        String tipo = null;
-        if (cursor.moveToFirst()) {
-            tipo = cursor.getString(cursor.getColumnIndex(COLUMN_TIPO));
-            Log.d("DBHelper", "Tipo de usuário encontrado: " + tipo);
-        } else {
-            Log.d("DBHelper", "Nenhum usuário encontrado com essas credenciais");
-        }
+        String[] columns = {COLUMN_EMAIL};
+        String selection = COLUMN_EMAIL + " = ? AND " + COLUMN_SENHA + " = ?";
+        String[] selectionArgs = {email, senha};
+        
+        Cursor cursor = db.query(TABLE_USUARIOS, columns, selection, selectionArgs, null, null, null);
+        boolean existe = cursor.moveToFirst();
         cursor.close();
-        return tipo;
+        
+        return existe;
     }
 
     public Usuario getProfessorByDisciplinaId(int disciplinaId) {
@@ -295,5 +286,37 @@ public class DBHelper extends SQLiteOpenHelper {
         
         cursor.close();
         return alunos;
+    }
+
+    public List<Disciplina> getDisciplinasByProfessor(String emailProfessor) {
+        List<Disciplina> disciplinas = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String[] columns = {
+            COLUMN_ID,
+            COLUMN_NOME_DISCIPLINA,
+            COLUMN_SEMESTRE,
+            COLUMN_EMAIL_PROFESSOR
+        };
+
+        String selection = COLUMN_EMAIL_PROFESSOR + " = ?";
+        String[] selectionArgs = {emailProfessor};
+        String orderBy = COLUMN_SEMESTRE + " DESC, " + COLUMN_NOME_DISCIPLINA + " ASC";
+
+        Cursor cursor = db.query(TABLE_DISCIPLINAS, columns, selection, selectionArgs, null, null, orderBy);
+
+        if (cursor.moveToFirst()) {
+            do {
+                Disciplina disciplina = new Disciplina(
+                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME_DISCIPLINA)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SEMESTRE)),
+                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL_PROFESSOR))
+                );
+                disciplinas.add(disciplina);
+            } while (cursor.moveToNext());
+        }
+        cursor.close();
+        return disciplinas;
     }
 } 

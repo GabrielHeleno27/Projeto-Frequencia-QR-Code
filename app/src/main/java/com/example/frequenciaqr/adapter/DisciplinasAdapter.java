@@ -50,6 +50,13 @@ public class DisciplinasAdapter extends RecyclerView.Adapter<DisciplinasAdapter.
         notifyDataSetChanged();
     }
 
+    public Disciplina getDisciplina(int position) {
+        if (position >= 0 && position < disciplinas.size()) {
+            return disciplinas.get(position);
+        }
+        return null;
+    }
+
     static class DisciplinaViewHolder extends RecyclerView.ViewHolder {
         TextView txtNomeDisciplina;
         TextView txtSemestre;

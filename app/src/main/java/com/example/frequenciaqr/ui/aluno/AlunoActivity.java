@@ -1,26 +1,24 @@
 package com.example.frequenciaqr.ui.aluno;
 
-import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.widget.Toast;
 import androidx.activity.result.ActivityResultLauncher;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.database.DBHelper;
+import com.example.frequenciaqr.ui.base.BaseActivity;
 import com.example.frequenciaqr.websocket.PresencaClient;
 import com.google.android.material.button.MaterialButton;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
-public class AlunoActivity extends AppCompatActivity implements PresencaClient.PresencaListener {
+public class AlunoActivity extends BaseActivity implements PresencaClient.PresencaListener {
     private RecyclerView recyclerViewDisciplinas;
     private MaterialButton btnLerQR;
     private DBHelper dbHelper;
     private PresencaClient presencaClient;
-    private SharedPreferences sharedPreferences;
 
     private final ActivityResultLauncher<ScanOptions> qrLauncher = registerForActivityResult(
         new ScanContract(),
@@ -32,12 +30,15 @@ public class AlunoActivity extends AppCompatActivity implements PresencaClient.P
     );
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_aluno);
+    protected int getLayoutResourceId() {
+        return R.layout.activity_aluno;
+    }
 
+    @Override
+    protected void setupActivity() {
+        super.setupActivity();
+        
         dbHelper = new DBHelper(this);
-        sharedPreferences = getSharedPreferences("FrequenciaQR", MODE_PRIVATE);
 
         // Inicializar views
         recyclerViewDisciplinas = findViewById(R.id.recyclerDisciplinas);
@@ -55,7 +56,7 @@ public class AlunoActivity extends AppCompatActivity implements PresencaClient.P
     }
 
     private void carregarDisciplinas() {
-        String emailAluno = sharedPreferences.getString("user_email", "");
+        String emailAluno = getEmailUsuarioLogado();
         // TODO: Implementar carregamento das disciplinas do banco de dados
     }
 
@@ -88,7 +89,7 @@ public class AlunoActivity extends AppCompatActivity implements PresencaClient.P
             String wsUrl = String.format("ws://%s:%d", serverIp, serverPort);
             
             // Obter email do aluno
-            String emailAluno = sharedPreferences.getString("user_email", "");
+            String emailAluno = getEmailUsuarioLogado();
 
             // Conectar ao servidor WebSocket
             if (presencaClient != null) {
