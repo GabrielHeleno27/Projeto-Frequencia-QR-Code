@@ -1,59 +1,93 @@
 package com.example.frequenciaqr.websocket;
 
 import android.util.Log;
-import org.java_websocket.client.WebSocketClient;
-import org.java_websocket.handshake.ServerHandshake;
-import java.net.URI;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.Response;
+import okhttp3.WebSocket;
+import okhttp3.WebSocketListener;
+import org.json.JSONObject;
+import java.util.concurrent.TimeUnit;
 
-public class PresencaClient extends WebSocketClient {
+public class PresencaClient extends WebSocketListener {
     private static final String TAG = "PresencaClient";
-    private final PresencaListener presencaListener;
-    private final String alunoEmail;
+    private WebSocket webSocket;
+    private final String serverUrl;
+    private final String emailAluno;
     private final String codigoAula;
+    private final PresencaListener listener;
+    private final OkHttpClient client;
 
     public interface PresencaListener {
         void onPresencaConfirmada();
-        void onPresencaRejeitada(String motivo);
+        void onError(String message);
     }
 
-    public PresencaClient(String serverUrl, String alunoEmail, String codigoAula, PresencaListener listener) {
-        super(URI.create(serverUrl));
-        this.alunoEmail = alunoEmail;
+    public PresencaClient(String serverUrl, String emailAluno, String codigoAula, PresencaListener listener) {
+        this.serverUrl = serverUrl;
+        this.emailAluno = emailAluno;
         this.codigoAula = codigoAula;
-        this.presencaListener = listener;
+        this.listener = listener;
+
+        this.client = new OkHttpClient.Builder()
+            .connectTimeout(10, TimeUnit.SECONDS)
+            .readTimeout(10, TimeUnit.SECONDS)
+            .writeTimeout(10, TimeUnit.SECONDS)
+            .build();
     }
 
-    @Override
-    public void onOpen(ServerHandshake handshakedata) {
-        Log.d(TAG, "Conexão estabelecida com o servidor");
-        // Envia os dados do aluno no formato email|codigoAula
-        send(alunoEmail + "|" + codigoAula);
+    public void connect() {
+        Request request = new Request.Builder()
+            .url(serverUrl)
+            .build();
+        webSocket = client.newWebSocket(request, this);
     }
 
-    @Override
-    public void onMessage(String message) {
-        Log.d(TAG, "Mensagem recebida: " + message);
-        if (message.equals("PRESENCA_OK")) {
-            if (presencaListener != null) {
-                presencaListener.onPresencaConfirmada();
-            }
-        } else {
-            if (presencaListener != null) {
-                presencaListener.onPresencaRejeitada(message);
-            }
+    public void close() {
+        if (webSocket != null) {
+            webSocket.close(1000, "Fechando conexão");
         }
     }
 
     @Override
-    public void onClose(int code, String reason, boolean remote) {
-        Log.d(TAG, "Conexão fechada: " + reason);
+    public void onOpen(WebSocket webSocket, Response response) {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("tipo", "registrar_presenca");
+            message.put("email_aluno", emailAluno);
+            message.put("codigo_aula", codigoAula);
+            
+            webSocket.send(message.toString());
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao enviar mensagem: " + e.getMessage());
+            listener.onError("Erro ao enviar dados de presença");
+        }
     }
 
     @Override
-    public void onError(Exception ex) {
-        Log.e(TAG, "Erro na conexão", ex);
-        if (presencaListener != null) {
-            presencaListener.onPresencaRejeitada("Erro de conexão: " + ex.getMessage());
+    public void onMessage(WebSocket webSocket, String text) {
+        try {
+            JSONObject response = new JSONObject(text);
+            String tipo = response.getString("tipo");
+            boolean sucesso = response.getBoolean("sucesso");
+            String mensagem = response.getString("mensagem");
+
+            if ("confirmacao_presenca".equals(tipo)) {
+                if (sucesso) {
+                    listener.onPresencaConfirmada();
+                } else {
+                    listener.onError(mensagem);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Erro ao processar mensagem: " + e.getMessage());
+            listener.onError("Erro ao processar resposta do servidor");
         }
+    }
+
+    @Override
+    public void onFailure(WebSocket webSocket, Throwable t, Response response) {
+        Log.e(TAG, "Erro na conexão WebSocket: " + t.getMessage());
+        listener.onError("Erro na conexão com o servidor");
     }
 } 

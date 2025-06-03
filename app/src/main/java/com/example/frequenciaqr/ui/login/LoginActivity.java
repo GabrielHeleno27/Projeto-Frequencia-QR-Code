@@ -8,7 +8,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.database.DBHelper;
-import com.example.frequenciaqr.ui.aluno.AlunoActivity;
+import com.example.frequenciaqr.ui.aluno.AlunoDisciplinasActivity;
 import com.example.frequenciaqr.ui.coordenador.CoordenadorActivity;
 import com.example.frequenciaqr.ui.professor.ProfessorActivity;
 import com.google.android.material.button.MaterialButton;
@@ -84,7 +84,7 @@ public class LoginActivity extends AppCompatActivity {
 
         switch (tipoUsuario.toLowerCase()) {
             case "aluno":
-                intent = new Intent(this, AlunoActivity.class);
+                intent = new Intent(this, AlunoDisciplinasActivity.class);
                 break;
             case "professor":
                 intent = new Intent(this, ProfessorActivity.class);

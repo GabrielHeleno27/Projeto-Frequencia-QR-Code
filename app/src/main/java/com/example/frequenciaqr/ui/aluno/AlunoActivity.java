@@ -56,8 +56,7 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
     }
 
     private void carregarDisciplinas() {
-        String emailAluno = getEmailUsuarioLogado();
-        // TODO: Implementar carregamento das disciplinas do banco de dados
+        // TODO: Implementar carregamento de disciplinas
     }
 
     private void iniciarLeituraQR() {
@@ -89,7 +88,8 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
             String wsUrl = String.format("ws://%s:%d", serverIp, serverPort);
             
             // Obter email do aluno
-            String emailAluno = getEmailUsuarioLogado();
+            String emailAluno = getSharedPreferences("FrequenciaQR", MODE_PRIVATE)
+                    .getString("email_usuario", "");
 
             // Conectar ao servidor WebSocket
             if (presencaClient != null) {
@@ -100,23 +100,9 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
             presencaClient.connect();
 
         } catch (Exception e) {
-            Toast.makeText(this, "Erro ao processar QR Code", Toast.LENGTH_SHORT).show();
+            Toast.makeText(this, "Erro ao processar QR Code: " + e.getMessage(), 
+                Toast.LENGTH_SHORT).show();
         }
-    }
-
-    @Override
-    public void onPresencaConfirmada() {
-        runOnUiThread(() -> {
-            Toast.makeText(this, "Presença registrada com sucesso!", Toast.LENGTH_SHORT).show();
-            // TODO: Atualizar interface com a nova presença
-        });
-    }
-
-    @Override
-    public void onPresencaRejeitada(String motivo) {
-        runOnUiThread(() -> {
-            Toast.makeText(this, "Erro ao registrar presença: " + motivo, Toast.LENGTH_LONG).show();
-        });
     }
 
     @Override
@@ -125,5 +111,20 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
         if (presencaClient != null) {
             presencaClient.close();
         }
+    }
+
+    @Override
+    public void onPresencaConfirmada() {
+        runOnUiThread(() -> {
+            Toast.makeText(this, "Presença registrada com sucesso!", Toast.LENGTH_SHORT).show();
+            carregarDisciplinas();
+        });
+    }
+
+    @Override
+    public void onError(String message) {
+        runOnUiThread(() -> {
+            Toast.makeText(this, "Erro: " + message, Toast.LENGTH_SHORT).show();
+        });
     }
 } 

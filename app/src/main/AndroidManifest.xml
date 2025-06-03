@@ -52,6 +52,16 @@
             android:name=".ui.aluno.AlunoActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".ui.aluno.AlunoDisciplinasActivity"
+            android:exported="false" />
+
+        <activity
+            android:name=".ui.aluno.DetalhesFrequenciaActivity"
+            android:exported="false"
+            android:label="Detalhes da Frequência"
+            android:parentActivityName=".ui.aluno.AlunoDisciplinasActivity" />
+
     </application>
 
 </manifest>
