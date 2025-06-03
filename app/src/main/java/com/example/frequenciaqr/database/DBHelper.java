@@ -319,4 +319,44 @@ public class DBHelper extends SQLiteOpenHelper {
         cursor.close();
         return disciplinas;
     }
+
+    public List<Disciplina> getDisciplinasProfessor(String emailProfessor) {
+        List<Disciplina> disciplinas = new ArrayList<>();
+        SQLiteDatabase db = this.getReadableDatabase();
+
+        String[] columns = {
+            COLUMN_ID,
+            COLUMN_NOME_DISCIPLINA,
+            COLUMN_SEMESTRE,
+            COLUMN_EMAIL_PROFESSOR
+        };
+
+        String selection = COLUMN_EMAIL_PROFESSOR + " = ?";
+        String[] selectionArgs = {emailProfessor};
+
+        Cursor cursor = db.query(
+            TABLE_DISCIPLINAS,
+            columns,
+            selection,
+            selectionArgs,
+            null,
+            null,
+            COLUMN_NOME_DISCIPLINA + " ASC"
+        );
+
+        if (cursor.moveToFirst()) {
+            do {
+                int id = cursor.getInt(cursor.getColumnIndex(COLUMN_ID));
+                String nome = cursor.getString(cursor.getColumnIndex(COLUMN_NOME_DISCIPLINA));
+                String semestre = cursor.getString(cursor.getColumnIndex(COLUMN_SEMESTRE));
+                String email = cursor.getString(cursor.getColumnIndex(COLUMN_EMAIL_PROFESSOR));
+
+                Disciplina disciplina = new Disciplina(id, nome, semestre, email);
+                disciplinas.add(disciplina);
+            } while (cursor.moveToNext());
+        }
+
+        cursor.close();
+        return disciplinas;
+    }
 } 

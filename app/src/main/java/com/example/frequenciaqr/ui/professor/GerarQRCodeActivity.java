@@ -1,18 +1,28 @@
 package com.example.frequenciaqr.ui.professor;
 
 import android.app.DatePickerDialog;
+import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.os.Bundle;
+import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
+import android.view.Window;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.Spinner;
+import android.widget.TextView;
 import android.widget.Toast;
-import androidx.appcompat.app.AppCompatActivity;
+
+import androidx.annotation.NonNull;
 
 import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.database.DBHelper;
+import com.example.frequenciaqr.model.Disciplina;
+import com.example.frequenciaqr.ui.base.BaseActivity;
+import com.google.android.material.button.MaterialButton;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
@@ -20,36 +30,39 @@ import com.google.zxing.qrcode.QRCodeWriter;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
 
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
+import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-public class GerarQRCodeActivity extends AppCompatActivity {
+public class GerarQRCodeActivity extends BaseActivity {
+    private Spinner spinnerDisciplinas;
     private EditText edtData;
     private CheckBox turnoA, turnoB, turnoC, turnoD, turnoE;
-    private Button btnGerarQR;
-    private ImageView imgQRCode;
+    private MaterialButton btnGerarQR;
     private DBHelper dbHelper;
     private int disciplinaId;
-    private String disciplinaNome;
     private Calendar calendar;
+    private List<Disciplina> disciplinas;
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_gerar_qrcode);
+    protected int getLayoutResourceId() {
+        return R.layout.activity_gerar_qrcode;
+    }
 
-        // Recuperar dados da intent
+    @Override
+    protected void setupActivity() {
+        super.setupActivity();
+
+        // Inicializar DBHelper
+        dbHelper = new DBHelper(this);
+
+        // Recuperar ID da disciplina selecionada da intent
         disciplinaId = getIntent().getIntExtra("disciplina_id", -1);
-        disciplinaNome = getIntent().getStringExtra("disciplina_nome");
-
-        if (disciplinaId == -1 || disciplinaNome == null) {
-            Toast.makeText(this, "Erro ao carregar disciplina", Toast.LENGTH_SHORT).show();
-            finish();
-            return;
-        }
 
         // Inicializar views
+        spinnerDisciplinas = findViewById(R.id.spinnerDisciplinas);
         edtData = findViewById(R.id.edtData);
         turnoA = findViewById(R.id.turnoA);
         turnoB = findViewById(R.id.turnoB);
@@ -57,7 +70,6 @@ public class GerarQRCodeActivity extends AppCompatActivity {
         turnoD = findViewById(R.id.turnoD);
         turnoE = findViewById(R.id.turnoE);
         btnGerarQR = findViewById(R.id.btnGerarQR);
-        imgQRCode = findViewById(R.id.imgQRCode);
 
         // Configurar calendário
         calendar = Calendar.getInstance();
@@ -70,8 +82,59 @@ public class GerarQRCodeActivity extends AppCompatActivity {
         // Configurar botão de gerar QR Code
         btnGerarQR.setOnClickListener(v -> gerarQRCode());
 
+        // Carregar disciplinas do professor
+        carregarDisciplinas();
+
         // Configurar título da activity
-        setTitle(disciplinaNome);
+        if (getSupportActionBar() != null) {
+            getSupportActionBar().setTitle("Gerar QR Code");
+        }
+    }
+
+    private void carregarDisciplinas() {
+        // Obter email do professor logado
+        String emailProfessor = getEmailUsuarioLogado();
+        
+        // Carregar disciplinas do banco de dados
+        disciplinas = dbHelper.getDisciplinasProfessor(emailProfessor);
+        
+        if (disciplinas.isEmpty()) {
+            Toast.makeText(this, "Nenhuma disciplina encontrada", Toast.LENGTH_SHORT).show();
+            finish();
+            return;
+        }
+
+        // Criar adapter para o spinner
+        ArrayAdapter<String> adapter = new ArrayAdapter<>(
+            this,
+            android.R.layout.simple_spinner_item,
+            disciplinas.stream().map(d -> d.getNome()).toArray(String[]::new)
+        );
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+        spinnerDisciplinas.setAdapter(adapter);
+
+        // Selecionar a disciplina que veio por intent
+        if (disciplinaId != -1) {
+            for (int i = 0; i < disciplinas.size(); i++) {
+                if (disciplinas.get(i).getId() == disciplinaId) {
+                    spinnerDisciplinas.setSelection(i);
+                    break;
+                }
+            }
+        }
+
+        // Configurar listener do spinner
+        spinnerDisciplinas.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                disciplinaId = disciplinas.get(position).getId();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+                // Não fazer nada
+            }
+        });
     }
 
     private void showDatePicker() {
@@ -122,11 +185,49 @@ public class GerarQRCodeActivity extends AppCompatActivity {
             BitMatrix bitMatrix = writer.encode(qrData, BarcodeFormat.QR_CODE, 512, 512);
             BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
             Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
-            imgQRCode.setVisibility(View.VISIBLE);
-            imgQRCode.setImageBitmap(bitmap);
+            
+            // Mostrar dialog com o QR Code
+            showQRCodeDialog(bitmap, disciplinas.get(spinnerDisciplinas.getSelectedItemPosition()).getNome(), turnos.toString());
             
         } catch (WriterException e) {
             Toast.makeText(this, "Erro ao gerar QR Code", Toast.LENGTH_SHORT).show();
         }
+    }
+
+    private void showQRCodeDialog(Bitmap qrBitmap, String disciplinaNome, String turnos) {
+        Dialog dialog = new Dialog(this);
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE);
+        dialog.setContentView(R.layout.dialog_qr_code);
+        dialog.setCancelable(false);
+
+        // Configurar views do dialog
+        TextView txtDisciplina = dialog.findViewById(R.id.txtDisciplina);
+        TextView txtTurnos = dialog.findViewById(R.id.txtTurnos);
+        ImageView imgQRCode = dialog.findViewById(R.id.imgQRCode);
+        MaterialButton btnFechar = dialog.findViewById(R.id.btnFechar);
+
+        // Configurar conteúdo
+        txtDisciplina.setText(disciplinaNome);
+        txtTurnos.setText("Turnos: " + turnos);
+        imgQRCode.setImageBitmap(qrBitmap);
+
+        // Configurar botão de fechar
+        btnFechar.setOnClickListener(v -> dialog.dismiss());
+
+        // Mostrar dialog
+        dialog.show();
+    }
+
+    @Override
+    public boolean onNavigationItemSelected(@NonNull MenuItem item) {
+        int itemId = item.getItemId();
+        
+        if (itemId == R.id.nav_disciplinas) {
+            // Voltar para a tela de disciplinas
+            finish();
+            return true;
+        }
+        
+        return super.onNavigationItemSelected(item);
     }
 } 

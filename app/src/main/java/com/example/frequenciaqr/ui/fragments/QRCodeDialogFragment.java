@@ -5,11 +5,11 @@ import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.ImageView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.DialogFragment;
-
 import com.example.frequenciaqr.R;
 import com.google.android.material.dialog.MaterialAlertDialogBuilder;
 
@@ -29,21 +29,21 @@ public class QRCodeDialogFragment extends DialogFragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            qrBitmap = (Bitmap) getArguments().getParcelable(ARG_QR_BITMAP);
+            qrBitmap = getArguments().getParcelable(ARG_QR_BITMAP);
         }
     }
 
     @NonNull
     @Override
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
-        View view = LayoutInflater.from(requireContext()).inflate(R.layout.dialog_qr_code, null);
-        ImageView imageViewQR = view.findViewById(R.id.imageViewQR);
-        imageViewQR.setImageBitmap(qrBitmap);
+        View view = LayoutInflater.from(getContext()).inflate(R.layout.fragment_qr_code_dialog, null);
+        ImageView imageViewQRCode = view.findViewById(R.id.imageViewQRCode);
+        imageViewQRCode.setImageBitmap(qrBitmap);
 
         return new MaterialAlertDialogBuilder(requireContext())
-                .setTitle(R.string.titulo_qr_code)
+                .setTitle("QR Code para Presença")
                 .setView(view)
-                .setPositiveButton(android.R.string.ok, null)
+                .setPositiveButton("Fechar", (dialog, which) -> dismiss())
                 .create();
     }
 } 
