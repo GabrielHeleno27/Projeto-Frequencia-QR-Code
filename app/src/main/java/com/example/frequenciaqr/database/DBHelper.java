@@ -36,6 +36,7 @@ public class DBHelper extends SQLiteOpenHelper {
     private static final String COLUMN_EMAIL_PROFESSOR = "email_professor";
     private static final String COLUMN_ID_DISCIPLINA = "id_disciplina";
     private static final String COLUMN_EMAIL_ALUNO = "email_aluno";
+    private static final String COLUMN_DATA_PRESENCA = "data_presenca";
 
     public DBHelper(Context context) {
         super(context, DATABASE_NAME, null, DATABASE_VERSION);
@@ -77,7 +78,7 @@ public class DBHelper extends SQLiteOpenHelper {
                 + COLUMN_ID + " INTEGER PRIMARY KEY AUTOINCREMENT,"
                 + COLUMN_ID_DISCIPLINA + " INTEGER,"
                 + COLUMN_EMAIL_ALUNO + " TEXT,"
-                + "data_presenca DATETIME DEFAULT CURRENT_TIMESTAMP,"
+                + COLUMN_DATA_PRESENCA + " DATETIME DEFAULT CURRENT_TIMESTAMP,"
                 + "FOREIGN KEY(" + COLUMN_ID_DISCIPLINA + ") REFERENCES " 
                 + TABLE_DISCIPLINAS + "(" + COLUMN_ID + "),"
                 + "FOREIGN KEY(" + COLUMN_EMAIL_ALUNO + ") REFERENCES " 
@@ -177,15 +178,15 @@ public class DBHelper extends SQLiteOpenHelper {
 
     public String getTipoUsuario(String email) {
         SQLiteDatabase db = this.getReadableDatabase();
-        Cursor cursor = db.query(TABLE_USUARIOS,
-                new String[]{COLUMN_TIPO},
-                COLUMN_EMAIL + "=?",
-                new String[]{email},
-                null, null, null);
+        String query = "SELECT " + COLUMN_TIPO +
+                      " FROM " + TABLE_USUARIOS +
+                      " WHERE " + COLUMN_EMAIL + " = ?";
+
+        Cursor cursor = db.rawQuery(query, new String[]{email});
 
         String tipo = null;
         if (cursor.moveToFirst()) {
-            tipo = cursor.getString(cursor.getColumnIndex(COLUMN_TIPO));
+            tipo = cursor.getString(0);
         }
         cursor.close();
         return tipo;
@@ -226,23 +227,23 @@ public class DBHelper extends SQLiteOpenHelper {
         List<Disciplina> disciplinas = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String[] columns = {
-            COLUMN_ID,
-            COLUMN_NOME_DISCIPLINA,
-            COLUMN_SEMESTRE,
-            COLUMN_EMAIL_PROFESSOR
-        };
+        String query = "SELECT " +
+            COLUMN_ID + ", " +
+            COLUMN_NOME_DISCIPLINA + ", " +
+            COLUMN_SEMESTRE + ", " +
+            COLUMN_EMAIL_PROFESSOR +
+            " FROM " + TABLE_DISCIPLINAS +
+            " ORDER BY " + COLUMN_SEMESTRE + " DESC, " + COLUMN_NOME_DISCIPLINA + " ASC";
 
-        Cursor cursor = db.query(TABLE_DISCIPLINAS, columns, null, null, null, null, 
-            COLUMN_SEMESTRE + " DESC, " + COLUMN_NOME_DISCIPLINA + " ASC");
+        Cursor cursor = db.rawQuery(query, null);
 
         if (cursor.moveToFirst()) {
             do {
                 Disciplina disciplina = new Disciplina(
-                    cursor.getInt(cursor.getColumnIndex(COLUMN_ID)),
-                    cursor.getString(cursor.getColumnIndex(COLUMN_NOME_DISCIPLINA)),
-                    cursor.getString(cursor.getColumnIndex(COLUMN_SEMESTRE)),
-                    cursor.getString(cursor.getColumnIndex(COLUMN_EMAIL_PROFESSOR))
+                    cursor.getInt(0),
+                    cursor.getString(1),
+                    cursor.getString(2),
+                    cursor.getString(3)
                 );
                 disciplinas.add(disciplina);
             } while (cursor.moveToNext());
@@ -255,14 +256,15 @@ public class DBHelper extends SQLiteOpenHelper {
         List<String> alunos = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String query = "SELECT " + COLUMN_EMAIL_ALUNO + " FROM " + TABLE_ALUNOS_DISCIPLINAS +
+        String query = "SELECT " + COLUMN_EMAIL_ALUNO +
+                " FROM " + TABLE_ALUNOS_DISCIPLINAS +
                 " WHERE " + COLUMN_ID_DISCIPLINA + " = ?";
 
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(idDisciplina)});
 
         if (cursor.moveToFirst()) {
             do {
-                alunos.add(cursor.getString(cursor.getColumnIndex(COLUMN_EMAIL_ALUNO)));
+                alunos.add(cursor.getString(0));
             } while (cursor.moveToNext());
         }
         cursor.close();
@@ -291,17 +293,15 @@ public class DBHelper extends SQLiteOpenHelper {
         
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(disciplinaId)});
         
+        Usuario professor = null;
         if (cursor.moveToFirst()) {
-            Usuario professor = new Usuario();
-            professor.setEmail(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL)));
-            professor.setNome(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME)));
-            professor.setTipo(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TIPO)));
-            cursor.close();
-            return professor;
+            professor = new Usuario();
+            professor.setEmail(cursor.getString(0));
+            professor.setNome(cursor.getString(1));
+            professor.setTipo(cursor.getString(2));
         }
-        
         cursor.close();
-        return null;
+        return professor;
     }
 
     public List<Usuario> getAlunosByDisciplinaId(int disciplinaId) {
@@ -317,9 +317,9 @@ public class DBHelper extends SQLiteOpenHelper {
         
         while (cursor.moveToNext()) {
             Usuario aluno = new Usuario();
-            aluno.setEmail(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL)));
-            aluno.setNome(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME)));
-            aluno.setTipo(cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_TIPO)));
+            aluno.setEmail(cursor.getString(0));
+            aluno.setNome(cursor.getString(1));
+            aluno.setTipo(cursor.getString(2));
             alunos.add(aluno);
         }
         
@@ -331,26 +331,24 @@ public class DBHelper extends SQLiteOpenHelper {
         List<Disciplina> disciplinas = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String[] columns = {
-            COLUMN_ID,
-            COLUMN_NOME_DISCIPLINA,
-            COLUMN_SEMESTRE,
-            COLUMN_EMAIL_PROFESSOR
-        };
+        String query = "SELECT " +
+            COLUMN_ID + ", " +
+            COLUMN_NOME_DISCIPLINA + ", " +
+            COLUMN_SEMESTRE + ", " +
+            COLUMN_EMAIL_PROFESSOR +
+            " FROM " + TABLE_DISCIPLINAS +
+            " WHERE " + COLUMN_EMAIL_PROFESSOR + " = ?" +
+            " ORDER BY " + COLUMN_SEMESTRE + " DESC, " + COLUMN_NOME_DISCIPLINA + " ASC";
 
-        String selection = COLUMN_EMAIL_PROFESSOR + " = ?";
-        String[] selectionArgs = {emailProfessor};
-        String orderBy = COLUMN_SEMESTRE + " DESC, " + COLUMN_NOME_DISCIPLINA + " ASC";
-
-        Cursor cursor = db.query(TABLE_DISCIPLINAS, columns, selection, selectionArgs, null, null, orderBy);
+        Cursor cursor = db.rawQuery(query, new String[]{emailProfessor});
 
         if (cursor.moveToFirst()) {
             do {
                 Disciplina disciplina = new Disciplina(
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME_DISCIPLINA)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SEMESTRE)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL_PROFESSOR))
+                    cursor.getInt(0),
+                    cursor.getString(1),
+                    cursor.getString(2),
+                    cursor.getString(3)
                 );
                 disciplinas.add(disciplina);
             } while (cursor.moveToNext());
@@ -363,38 +361,28 @@ public class DBHelper extends SQLiteOpenHelper {
         List<Disciplina> disciplinas = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String[] columns = {
-            COLUMN_ID,
-            COLUMN_NOME_DISCIPLINA,
-            COLUMN_SEMESTRE,
-            COLUMN_EMAIL_PROFESSOR
-        };
+        String query = "SELECT " + 
+                      COLUMN_ID + ", " +
+                      COLUMN_NOME_DISCIPLINA + ", " +
+                      COLUMN_SEMESTRE + ", " +
+                      COLUMN_EMAIL_PROFESSOR +
+                      " FROM " + TABLE_DISCIPLINAS +
+                      " WHERE " + COLUMN_EMAIL_PROFESSOR + " = ?" +
+                      " ORDER BY " + COLUMN_NOME_DISCIPLINA + " ASC";
 
-        String selection = COLUMN_EMAIL_PROFESSOR + " = ?";
-        String[] selectionArgs = {emailProfessor};
-
-        Cursor cursor = db.query(
-            TABLE_DISCIPLINAS,
-            columns,
-            selection,
-            selectionArgs,
-            null,
-            null,
-            COLUMN_NOME_DISCIPLINA + " ASC"
-        );
+        Cursor cursor = db.rawQuery(query, new String[]{emailProfessor});
 
         if (cursor.moveToFirst()) {
             do {
-                int id = cursor.getInt(cursor.getColumnIndex(COLUMN_ID));
-                String nome = cursor.getString(cursor.getColumnIndex(COLUMN_NOME_DISCIPLINA));
-                String semestre = cursor.getString(cursor.getColumnIndex(COLUMN_SEMESTRE));
-                String email = cursor.getString(cursor.getColumnIndex(COLUMN_EMAIL_PROFESSOR));
-
-                Disciplina disciplina = new Disciplina(id, nome, semestre, email);
+                Disciplina disciplina = new Disciplina(
+                    cursor.getInt(0), // id está na posição 0
+                    cursor.getString(1), // nome está na posição 1
+                    cursor.getString(2), // semestre está na posição 2
+                    cursor.getString(3)  // email_professor está na posição 3
+                );
                 disciplinas.add(disciplina);
             } while (cursor.moveToNext());
         }
-
         cursor.close();
         return disciplinas;
     }
@@ -403,24 +391,27 @@ public class DBHelper extends SQLiteOpenHelper {
         List<Disciplina> disciplinas = new ArrayList<>();
         SQLiteDatabase db = this.getReadableDatabase();
 
-        String query = "SELECT d.*, " +
+        String query = "SELECT d." + COLUMN_ID + ", " +
+                      "d." + COLUMN_NOME_DISCIPLINA + ", " +
+                      "d." + COLUMN_SEMESTRE + ", " +
+                      "d." + COLUMN_EMAIL_PROFESSOR + ", " +
                       "(SELECT COUNT(*) FROM " + TABLE_PRESENCAS + " p " +
-                      "WHERE p.id_disciplina = d.id AND p.email_aluno = ?) as presencas " +
+                      "WHERE p." + COLUMN_ID_DISCIPLINA + " = d." + COLUMN_ID + " AND p." + COLUMN_EMAIL_ALUNO + " = ?) as presencas " +
                       "FROM " + TABLE_DISCIPLINAS + " d " +
-                      "INNER JOIN " + TABLE_ALUNOS_DISCIPLINAS + " ad ON d.id = ad.id_disciplina " +
-                      "WHERE ad.email_aluno = ? " +
-                      "ORDER BY d.semestre DESC, d.nome ASC";
+                      "INNER JOIN " + TABLE_ALUNOS_DISCIPLINAS + " ad ON d." + COLUMN_ID + " = ad." + COLUMN_ID_DISCIPLINA + " " +
+                      "WHERE ad." + COLUMN_EMAIL_ALUNO + " = ? " +
+                      "ORDER BY d." + COLUMN_SEMESTRE + " DESC, d." + COLUMN_NOME_DISCIPLINA + " ASC";
 
         Cursor cursor = db.rawQuery(query, new String[]{emailAluno, emailAluno});
 
         if (cursor.moveToFirst()) {
             do {
                 Disciplina disciplina = new Disciplina(
-                    cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME_DISCIPLINA)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SEMESTRE)),
-                    cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL_PROFESSOR)),
-                    cursor.getInt(cursor.getColumnIndexOrThrow("presencas"))
+                    cursor.getInt(0), // id está na posição 0
+                    cursor.getString(1), // nome está na posição 1
+                    cursor.getString(2), // semestre está na posição 2
+                    cursor.getString(3), // email_professor está na posição 3
+                    cursor.getInt(4)  // presencas está na posição 4
                 );
                 disciplinas.add(disciplina);
             } while (cursor.moveToNext());
@@ -431,25 +422,46 @@ public class DBHelper extends SQLiteOpenHelper {
 
     public Disciplina getDisciplinaById(int id) {
         SQLiteDatabase db = this.getReadableDatabase();
-        String query = "SELECT d.*, " +
+        String query = "SELECT d." + COLUMN_ID + ", " +
+                      "d." + COLUMN_NOME_DISCIPLINA + ", " +
+                      "d." + COLUMN_SEMESTRE + ", " +
+                      "d." + COLUMN_EMAIL_PROFESSOR + ", " +
                       "(SELECT COUNT(*) FROM " + TABLE_PRESENCAS + " p " +
-                      "WHERE p.id_disciplina = d.id) as presencas " +
+                      "WHERE p." + COLUMN_ID_DISCIPLINA + " = d." + COLUMN_ID + ") as presencas " +
                       "FROM " + TABLE_DISCIPLINAS + " d " +
-                      "WHERE d.id = ?";
+                      "WHERE d." + COLUMN_ID + " = ?";
 
         Cursor cursor = db.rawQuery(query, new String[]{String.valueOf(id)});
 
         Disciplina disciplina = null;
         if (cursor.moveToFirst()) {
             disciplina = new Disciplina(
-                cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_ID)),
-                cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_NOME_DISCIPLINA)),
-                cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_SEMESTRE)),
-                cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_EMAIL_PROFESSOR)),
-                cursor.getInt(cursor.getColumnIndexOrThrow("presencas"))
+                cursor.getInt(0), // id está na posição 0
+                cursor.getString(1), // nome está na posição 1
+                cursor.getString(2), // semestre está na posição 2
+                cursor.getString(3), // email_professor está na posição 3
+                cursor.getInt(4)  // presencas está na posição 4
             );
         }
         cursor.close();
         return disciplina;
+    }
+
+    public boolean registrarPresenca(int disciplinaId, String emailAluno, long timestamp) {
+        SQLiteDatabase db = this.getWritableDatabase();
+        ContentValues values = new ContentValues();
+        values.put(COLUMN_ID_DISCIPLINA, disciplinaId);
+        values.put(COLUMN_EMAIL_ALUNO, emailAluno);
+        values.put(COLUMN_DATA_PRESENCA, timestamp);
+
+        try {
+            long result = db.insert(TABLE_PRESENCAS, null, values);
+            return result != -1;
+        } catch (Exception e) {
+            Log.e("DBHelper", "Erro ao registrar presença: " + e.getMessage());
+            return false;
+        } finally {
+            db.close();
+        }
     }
 } 

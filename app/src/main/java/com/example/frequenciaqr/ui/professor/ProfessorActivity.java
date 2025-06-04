@@ -20,7 +20,6 @@ import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.adapter.DisciplinasAdapter;
 import com.example.frequenciaqr.database.DBHelper;
 import com.example.frequenciaqr.model.Disciplina;
-import com.example.frequenciaqr.network.PresencaServer;
 import com.example.frequenciaqr.ui.base.BaseActivity;
 import com.example.frequenciaqr.ui.fragments.QRCodeDialogFragment;
 import com.example.frequenciaqr.ui.login.LoginActivity;
@@ -36,9 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import android.util.Log;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
+import org.json.JSONObject;
 
 public class ProfessorActivity extends BaseActivity implements NavigationView.OnNavigationItemSelectedListener {
     private static final String TAG = "ProfessorActivity";
@@ -52,18 +49,15 @@ public class ProfessorActivity extends BaseActivity implements NavigationView.On
     private TextView txtTempoRestante;
     private CountDownTimer qrCodeTimer;
     private static final long QR_CODE_DURATION = 5 * 60 * 1000; // 5 minutos em milissegundos
-    private static final int WEBSOCKET_PORT = 8887;
-    private PresencaServer presencaServer;
     private String currentCodigoAula;
-    private ExecutorService executorService;
-    private Future<?> serverFuture;
+    private com.example.frequenciaqr.local.PresencaLocal presencaLocal;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
         dbHelper = new DBHelper(this);
-        executorService = Executors.newSingleThreadExecutor();
+        presencaLocal = new com.example.frequenciaqr.local.PresencaLocal(this);
 
         // Configurar DrawerLayout e NavigationView
         drawerLayout = findViewById(R.id.drawer_layout);
@@ -178,69 +172,22 @@ public class ProfessorActivity extends BaseActivity implements NavigationView.On
         }
     }
 
-    private void pararServidor() {
-        if (serverFuture != null) {
-            serverFuture.cancel(true);
-        }
-        
-        if (presencaServer != null) {
-            executorService.execute(() -> {
-                try {
-                    presencaServer.stop();
-                } catch (InterruptedException e) {
-                    Log.e(TAG, "Erro ao parar servidor WebSocket", e);
-                    runOnUiThread(() -> {
-                        Toast.makeText(ProfessorActivity.this, 
-                            "Erro ao parar servidor: " + e.getMessage(), 
-                            Toast.LENGTH_SHORT).show();
-                    });
-                } finally {
-                    presencaServer = null;
-                }
-            });
-        }
-    }
-
-    private void iniciarServidor() {
-        if (presencaServer != null) {
-            pararServidor();
-        }
-
-        presencaServer = new PresencaServer(WEBSOCKET_PORT, currentCodigoAula, this);
-        serverFuture = executorService.submit(() -> {
-            try {
-                presencaServer.start();
-            } catch (Exception e) {
-                Log.e(TAG, "Erro ao iniciar servidor WebSocket", e);
-                runOnUiThread(() -> {
-                    Toast.makeText(ProfessorActivity.this, 
-                        "Erro ao iniciar servidor. Verifique sua conexão.", 
-                        Toast.LENGTH_LONG).show();
-                });
-            }
-        });
-    }
-
     private void gerarQRCode() {
-        // Gerar código único para a aula
-        currentCodigoAula = UUID.randomUUID().toString();
-        
-        // Iniciar servidor WebSocket
-        iniciarServidor();
-        
-        // Obter IP local
-        String ipAddress = PresencaServer.getLocalIpAddress();
-        if (ipAddress == null) {
-            Toast.makeText(this, "Erro ao obter endereço IP", Toast.LENGTH_LONG).show();
-            return;
-        }
-        
-        // Criar string com dados para o QR Code (código|ip|porta)
-        String qrData = String.format("%s|%s|%d", currentCodigoAula, ipAddress, WEBSOCKET_PORT);
-        
         try {
+            // Criar JSON com informações da aula
+            JSONObject aulaInfo = new JSONObject();
+            aulaInfo.put("codigo", UUID.randomUUID().toString());
+            aulaInfo.put("timestamp", System.currentTimeMillis());
+            aulaInfo.put("disciplina_id", disciplinasAdapter.getDisciplina(0).getId());
+            aulaInfo.put("disciplina_nome", disciplinasAdapter.getDisciplina(0).getNome());
+            aulaInfo.put("professor_email", getSharedPreferences("FrequenciaQR", MODE_PRIVATE).getString("email_usuario", ""));
+            
+            // Registrar código no modo local
+            presencaLocal.registrarCodigoAula(aulaInfo.toString());
+            
+            // Criar QR Code com as informações da aula
             QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix bitMatrix = writer.encode(qrData, BarcodeFormat.QR_CODE, 512, 512);
+            BitMatrix bitMatrix = writer.encode(aulaInfo.toString(), BarcodeFormat.QR_CODE, 512, 512);
             BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
             Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
 
@@ -251,8 +198,8 @@ public class ProfessorActivity extends BaseActivity implements NavigationView.On
             // Iniciar timer
             iniciarTimer();
             
-        } catch (WriterException e) {
-            Toast.makeText(this, "Erro ao gerar QR Code", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Erro ao gerar QR Code: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -274,7 +221,7 @@ public class ProfessorActivity extends BaseActivity implements NavigationView.On
             @Override
             public void onFinish() {
                 txtTempoRestante.setVisibility(View.GONE);
-                pararServidor();
+                presencaLocal.limparCodigo();
             }
         }.start();
     }
@@ -285,7 +232,6 @@ public class ProfessorActivity extends BaseActivity implements NavigationView.On
         if (qrCodeTimer != null) {
             qrCodeTimer.cancel();
         }
-        pararServidor();
-        executorService.shutdown();
+        presencaLocal.limparCodigo();
     }
 } 

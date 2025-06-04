@@ -18,7 +18,7 @@ import com.example.frequenciaqr.adapter.DisciplinasAlunoAdapter;
 import com.example.frequenciaqr.database.DBHelper;
 import com.example.frequenciaqr.model.Disciplina;
 import com.example.frequenciaqr.ui.base.BaseActivity;
-import com.example.frequenciaqr.websocket.PresencaClient;
+import com.example.frequenciaqr.local.PresencaLocal;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.android.material.navigation.NavigationView;
 import com.journeyapps.barcodescanner.ScanContract;
@@ -26,6 +26,7 @@ import com.journeyapps.barcodescanner.ScanOptions;
 import java.util.ArrayList;
 import java.util.List;
 import android.util.Log;
+import org.json.JSONObject;
 
 public class AlunoDisciplinasActivity extends BaseActivity {
     private DBHelper dbHelper;
@@ -35,7 +36,7 @@ public class AlunoDisciplinasActivity extends BaseActivity {
     private FloatingActionButton fabLerQR;
     private DrawerLayout drawerLayout;
     private NavigationView navigationView;
-    private PresencaClient presencaClient;
+    private PresencaLocal presencaLocal;
 
     private final ActivityResultLauncher<ScanOptions> qrLauncher = registerForActivityResult(
         new ScanContract(),
@@ -58,6 +59,7 @@ public class AlunoDisciplinasActivity extends BaseActivity {
         }
 
         dbHelper = new DBHelper(this);
+        presencaLocal = new PresencaLocal(this);
 
         // Inicializar views
         recyclerViewDisciplinas = findViewById(R.id.recyclerViewDisciplinas);
@@ -97,50 +99,39 @@ public class AlunoDisciplinasActivity extends BaseActivity {
 
     private void processarQRCode(String qrContent) {
         try {
-            // Formato esperado: codigoAula|ip|porta
-            String[] parts = qrContent.split("\\|");
-            if (parts.length != 3) {
-                Toast.makeText(this, "QR Code inválido", Toast.LENGTH_SHORT).show();
-                return;
+            // Extrair informações da aula do QR Code
+            JSONObject aulaInfo = new JSONObject(qrContent);
+            
+            // Validar se todos os campos necessários estão presentes
+            if (!aulaInfo.has("codigo") || !aulaInfo.has("timestamp") || 
+                !aulaInfo.has("disciplina_id") || !aulaInfo.has("data") || 
+                !aulaInfo.has("turnos")) {
+                throw new Exception("QR Code inválido: faltam informações necessárias");
             }
-
-            String codigoAula = parts[0];
-            String serverIp = parts[1];
-            int serverPort = Integer.parseInt(parts[2]);
-
-            // Criar URL do WebSocket
-            String wsUrl = String.format("ws://%s:%d", serverIp, serverPort);
+            
+            int disciplinaId = aulaInfo.getInt("disciplina_id");
+            long timestamp = aulaInfo.getLong("timestamp");
             
             // Obter email do aluno
             String emailAluno = getSharedPreferences("FrequenciaQR", MODE_PRIVATE)
                     .getString("email_usuario", "");
 
-            // Conectar ao servidor WebSocket
-            if (presencaClient != null) {
-                presencaClient.close();
+            if (emailAluno.isEmpty()) {
+                throw new Exception("Erro: usuário não está logado");
             }
-            
-            presencaClient = new PresencaClient(wsUrl, emailAluno, codigoAula, new PresencaClient.PresencaListener() {
-                @Override
-                public void onPresencaConfirmada() {
-                    runOnUiThread(() -> {
-                        Toast.makeText(AlunoDisciplinasActivity.this, 
-                            "Presença registrada com sucesso!", Toast.LENGTH_SHORT).show();
-                        carregarDisciplinas();
-                    });
-                }
 
-                @Override
-                public void onError(String message) {
-                    runOnUiThread(() -> {
-                        Toast.makeText(AlunoDisciplinasActivity.this, 
-                            "Erro: " + message, Toast.LENGTH_SHORT).show();
-                    });
-                }
-            });
-            presencaClient.connect();
+            // Salvar presença no SQLite
+            if (dbHelper.registrarPresenca(disciplinaId, emailAluno, timestamp)) {
+                Toast.makeText(AlunoDisciplinasActivity.this, 
+                    "Presença registrada com sucesso!", Toast.LENGTH_SHORT).show();
+                carregarDisciplinas(); // Atualizar lista de disciplinas
+            } else {
+                Toast.makeText(AlunoDisciplinasActivity.this, 
+                    "Erro ao registrar presença no banco de dados", Toast.LENGTH_SHORT).show();
+            }
 
         } catch (Exception e) {
+            Log.e("AlunoDisciplinasActivity", "Erro ao processar QR Code: " + e.getMessage());
             Toast.makeText(this, "Erro ao processar QR Code: " + e.getMessage(), 
                 Toast.LENGTH_SHORT).show();
         }
@@ -155,9 +146,6 @@ public class AlunoDisciplinasActivity extends BaseActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (presencaClient != null) {
-            presencaClient.close();
-        }
     }
 
     @Override

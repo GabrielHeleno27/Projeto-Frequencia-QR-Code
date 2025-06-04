@@ -22,12 +22,15 @@ import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.database.DBHelper;
 import com.example.frequenciaqr.model.Disciplina;
 import com.example.frequenciaqr.ui.base.BaseActivity;
+import com.example.frequenciaqr.local.PresencaLocal;
 import com.google.android.material.button.MaterialButton;
 import com.google.zxing.BarcodeFormat;
 import com.google.zxing.WriterException;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.QRCodeWriter;
 import com.journeyapps.barcodescanner.BarcodeEncoder;
+
+import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -162,35 +165,44 @@ public class GerarQRCodeActivity extends BaseActivity {
             return;
         }
 
-        // Gerar código único para a aula
-        String codigoAula = UUID.randomUUID().toString();
-
-        // Criar string com dados para o QR Code
-        StringBuilder turnos = new StringBuilder();
-        if (turnoA.isChecked()) turnos.append("A");
-        if (turnoB.isChecked()) turnos.append("B");
-        if (turnoC.isChecked()) turnos.append("C");
-        if (turnoD.isChecked()) turnos.append("D");
-        if (turnoE.isChecked()) turnos.append("E");
-
-        SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
-        String data = dateFormat.format(calendar.getTime());
-        
-        // Formato: codigoAula|disciplinaId|data|turnos
-        String qrData = String.format("%s|%d|%s|%s", 
-            codigoAula, disciplinaId, data, turnos.toString());
-        
         try {
+            // Gerar código único para a aula
+            String codigoAula = UUID.randomUUID().toString();
+
+            // Criar string com dados para o QR Code
+            StringBuilder turnos = new StringBuilder();
+            if (turnoA.isChecked()) turnos.append("A");
+            if (turnoB.isChecked()) turnos.append("B");
+            if (turnoC.isChecked()) turnos.append("C");
+            if (turnoD.isChecked()) turnos.append("D");
+            if (turnoE.isChecked()) turnos.append("E");
+
+            SimpleDateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy", Locale.getDefault());
+            String data = dateFormat.format(calendar.getTime());
+            
+            // Criar JSON com as informações
+            JSONObject qrJson = new JSONObject();
+            qrJson.put("codigo", codigoAula);
+            qrJson.put("timestamp", System.currentTimeMillis());
+            qrJson.put("disciplina_id", disciplinaId);
+            qrJson.put("data", data);
+            qrJson.put("turnos", turnos.toString());
+            
+            // Registrar código no modo local
+            PresencaLocal presencaLocal = new PresencaLocal(this);
+            presencaLocal.registrarCodigoAula(qrJson.toString());
+            
+            // Gerar QR Code com o JSON
             QRCodeWriter writer = new QRCodeWriter();
-            BitMatrix bitMatrix = writer.encode(qrData, BarcodeFormat.QR_CODE, 512, 512);
+            BitMatrix bitMatrix = writer.encode(qrJson.toString(), BarcodeFormat.QR_CODE, 512, 512);
             BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
             Bitmap bitmap = barcodeEncoder.createBitmap(bitMatrix);
             
             // Mostrar dialog com o QR Code
             showQRCodeDialog(bitmap, disciplinas.get(spinnerDisciplinas.getSelectedItemPosition()).getNome(), turnos.toString());
             
-        } catch (WriterException e) {
-            Toast.makeText(this, "Erro ao gerar QR Code", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Toast.makeText(this, "Erro ao gerar QR Code: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
 

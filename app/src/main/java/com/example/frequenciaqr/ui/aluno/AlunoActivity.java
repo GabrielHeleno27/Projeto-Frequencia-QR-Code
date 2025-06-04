@@ -9,16 +9,16 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.example.frequenciaqr.R;
 import com.example.frequenciaqr.database.DBHelper;
 import com.example.frequenciaqr.ui.base.BaseActivity;
-import com.example.frequenciaqr.websocket.PresencaClient;
+import com.example.frequenciaqr.local.PresencaLocal;
 import com.google.android.material.button.MaterialButton;
 import com.journeyapps.barcodescanner.ScanContract;
 import com.journeyapps.barcodescanner.ScanOptions;
 
-public class AlunoActivity extends BaseActivity implements PresencaClient.PresencaListener {
+public class AlunoActivity extends BaseActivity {
     private RecyclerView recyclerViewDisciplinas;
     private MaterialButton btnLerQR;
     private DBHelper dbHelper;
-    private PresencaClient presencaClient;
+    private PresencaLocal presencaLocal;
 
     private final ActivityResultLauncher<ScanOptions> qrLauncher = registerForActivityResult(
         new ScanContract(),
@@ -39,6 +39,7 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
         super.setupActivity();
         
         dbHelper = new DBHelper(this);
+        presencaLocal = new PresencaLocal(this);
 
         // Inicializar views
         recyclerViewDisciplinas = findViewById(R.id.recyclerDisciplinas);
@@ -51,7 +52,7 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
         // Configurar botão
         btnLerQR.setOnClickListener(v -> iniciarLeituraQR());
 
-        // Carregar disciplinas do aluno
+        // Carregar disciplinas
         carregarDisciplinas();
     }
 
@@ -73,58 +74,34 @@ public class AlunoActivity extends BaseActivity implements PresencaClient.Presen
 
     private void processarQRCode(String qrContent) {
         try {
-            // Formato esperado: codigoAula|ip|porta
-            String[] parts = qrContent.split("\\|");
-            if (parts.length != 3) {
-                Toast.makeText(this, "QR Code inválido", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            String codigoAula = parts[0];
-            String serverIp = parts[1];
-            int serverPort = Integer.parseInt(parts[2]);
-
-            // Criar URL do WebSocket
-            String wsUrl = String.format("ws://%s:%d", serverIp, serverPort);
+            // O QR Code agora contém apenas o código da aula
+            String codigoAula = qrContent;
             
             // Obter email do aluno
             String emailAluno = getSharedPreferences("FrequenciaQR", MODE_PRIVATE)
                     .getString("email_usuario", "");
 
-            // Conectar ao servidor WebSocket
-            if (presencaClient != null) {
-                presencaClient.close();
-            }
-            
-            presencaClient = new PresencaClient(wsUrl, emailAluno, codigoAula, this);
-            presencaClient.connect();
+            // Verificar presença localmente
+            presencaLocal.verificarPresenca(codigoAula, emailAluno, new PresencaLocal.PresencaListener() {
+                public void onPresencaConfirmada() {
+                    runOnUiThread(() -> {
+                        Toast.makeText(AlunoActivity.this, 
+                            "Presença registrada com sucesso!", Toast.LENGTH_SHORT).show();
+                        carregarDisciplinas();
+                    });
+                }
+
+                public void onError(String message) {
+                    runOnUiThread(() -> {
+                        Toast.makeText(AlunoActivity.this, 
+                            "Erro: " + message, Toast.LENGTH_SHORT).show();
+                    });
+                }
+            });
 
         } catch (Exception e) {
             Toast.makeText(this, "Erro ao processar QR Code: " + e.getMessage(), 
                 Toast.LENGTH_SHORT).show();
         }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (presencaClient != null) {
-            presencaClient.close();
-        }
-    }
-
-    @Override
-    public void onPresencaConfirmada() {
-        runOnUiThread(() -> {
-            Toast.makeText(this, "Presença registrada com sucesso!", Toast.LENGTH_SHORT).show();
-            carregarDisciplinas();
-        });
-    }
-
-    @Override
-    public void onError(String message) {
-        runOnUiThread(() -> {
-            Toast.makeText(this, "Erro: " + message, Toast.LENGTH_SHORT).show();
-        });
     }
 } 
